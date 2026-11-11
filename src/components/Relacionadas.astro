@@ -1,0 +1,16 @@
+---
+import { calculadora } from '../config/sitio';
+interface Props { slugs: string[] }
+const lista = Astro.props.slugs.map(calculadora);
+---
+<ul class="relacionadas">
+  {lista.map((c) => (
+    <li>
+      {c.disponible ? (
+        <a class="tarjeta" href={`/${c.slug}/`}><strong>{c.nombre}</strong><span>{c.descripcion}</span></a>
+      ) : (
+        <div class="tarjeta tarjeta--pronto"><strong>{c.nombre}</strong><span>{c.descripcion} <span class="etiqueta">Próximamente</span></span></div>
+      )}
+    </li>
+  ))}
+</ul>

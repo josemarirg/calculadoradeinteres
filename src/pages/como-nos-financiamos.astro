@@ -1,0 +1,45 @@
+---
+import Pagina from '../layouts/Pagina.astro';
+import { PRODUCTOS } from '../config/afiliados';
+import { SITIO } from '../config/sitio';
+const activos = PRODUCTOS.filter((p) => p.activo);
+---
+<Pagina titulo="Cómo nos financiamos" descripcion={`Cómo se financia ${SITIO.dominio}: enlaces de afiliación identificados y criterios de independencia.`} ruta="/como-nos-financiamos/" h1="Cómo nos financiamos" actualizado="2026-11-11">
+  <p>Las calculadoras son gratuitas. El sitio se financia con enlaces de afiliación y, en el futuro, quizá con publicidad. Esta página explica cómo funciona y qué límites nos ponemos.</p>
+
+  <h2>Enlaces de afiliación</h2>
+  <p>
+    En algunas páginas, debajo del resultado de la calculadora, puede aparecer un bloque con un producto financiero de una entidad.
+    Ese bloque es publicidad y está marcado como tal. Si haces clic y contratas el producto, la entidad nos paga una comisión.
+    A ti no te cuesta nada ni cambia las condiciones que te ofrecen.
+  </p>
+  <p>
+    En el caso de las hipotecas, el enlace puede llevar a un intermediario de crédito registrado. Si le pides información, es él
+    quien recoge tus datos y te atiende; nosotros no participamos en esa relación y cobramos solo si tu solicitud es real.
+  </p>
+
+  <h2>Qué no cambia por la afiliación</h2>
+  <ul>
+    <li><strong>Los cálculos.</strong> Las fórmulas son las mismas haya o no un anunciante, y están publicadas.</li>
+    <li><strong>El orden.</strong> Los bloques de producto van siempre después del resultado, nunca antes ni mezclados con él.</li>
+    <li><strong>El contenido.</strong> Los textos explicativos no recomiendan productos concretos.</li>
+  </ul>
+
+  <h2>Nuestras reglas</h2>
+  <ul>
+    <li>No promocionamos CFD, forex ni criptoactivos.</li>
+    <li>La TAE, las condiciones y las advertencias de cada producto se reproducen tal como las publica la entidad, con la fecha en que se consultaron.</li>
+    <li>La publicidad se distingue siempre del contenido propio con la etiqueta «Publicidad».</li>
+    <li>No damos recomendaciones personalizadas: que un producto aparezca aquí no significa que sea adecuado para ti.</li>
+  </ul>
+
+  <h2>Acuerdos activos</h2>
+  {activos.length > 0 ? (
+    <ul>{activos.map((p) => <li>{p.entidad} · {p.producto}</li>)}</ul>
+  ) : (
+    <p>Ahora mismo no hay ningún acuerdo de afiliación activo en el sitio.</p>
+  )}
+
+  <h2>Publicidad</h2>
+  <p>Si más adelante se incluye publicidad gráfica, solo se cargará con tu consentimiento, como se explica en la <a href="/cookies/">política de cookies</a>.</p>
+</Pagina>

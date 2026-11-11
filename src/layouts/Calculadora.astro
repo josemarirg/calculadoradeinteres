@@ -1,0 +1,105 @@
+---
+/**
+ * Plantilla común de las páginas de calculadora.
+ * Slot «calc»: la isla interactiva. Slot por defecto: el contenido propio
+ * (explicación, fórmula, ejemplo, errores frecuentes). El resto lo pone la plantilla:
+ * autor y fecha, preguntas frecuentes, relacionadas, código para insertar, fuentes y datos estructurados.
+ */
+import Base from './Base.astro';
+import BloqueProducto from '../components/BloqueProducto.astro';
+import Relacionadas from '../components/Relacionadas.astro';
+import { fechaLarga } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { AUTOR, calculadora, CLUSTERES, FUENTES, PAGINAS_PIE, SITIO } from '../config/sitio';
+
+interface Props {
+  slug: string;
+  titulo: string;
+  descripcion: string;
+  /** Fecha de última revisión del contenido (AAAA-MM-DD). */
+  revisado: string;
+  faqs: { p: string; r: string }[];
+  relacionadas: string[];
+  fuentes: { clave: keyof typeof FUENTES; nota: string }[];
+  /** Alto recomendado del iframe para insertar. */
+  altoIframe?: number;
+}
+const { slug, titulo, descripcion, revisado, faqs, relacionadas, fuentes, altoIframe = 820 } = Astro.props;
+const calc = calculadora(slug);
+const cluster = CLUSTERES.find((c) => c.id === calc.cluster)!;
+const ruta = `/${slug}/`;
+const urlPagina = `${SITIO.url}${ruta}`;
+const existe = (url: string) => PAGINAS_PIE.some((p) => p.url === url && p.disponible);
+
+const jsonld = [
+  { '@type': 'Person', '@id': `${SITIO.url}/#autor`, name: AUTOR.nombre, url: `${SITIO.url}${AUTOR.url}` },
+  {
+    '@type': 'WebApplication',
+    '@id': `${urlPagina}#app`,
+    name: calc.nombre,
+    url: urlPagina,
+    description: descripcion,
+    applicationCategory: 'FinanceApplication',
+    operatingSystem: 'Any',
+    browserRequirements: 'Requiere JavaScript',
+    inLanguage: SITIO.idioma,
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
+    author: { '@id': `${SITIO.url}/#autor` },
+    publisher: { '@id': `${SITIO.url}/#organizacion` },
+    dateModified: revisado,
+  },
+  {
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.p, acceptedAnswer: { '@type': 'Answer', text: f.r } })),
+  },
+];
+const iframe = `<iframe src="${SITIO.url}/embed/${slug}/" title="${calc.nombre}" width="100%" height="${altoIframe}" loading="lazy" style="border:0"></iframe>
+<p><a href="${urlPagina}">${calc.nombre}</a> de ${SITIO.dominio}</p>`;
+---
+<Base titulo={titulo} descripcion={descripcion} ruta={ruta} migas={[{ nombre: cluster.nombre, url: `/${cluster.id}/` }, { nombre: calc.corto }]} jsonld={jsonld}>
+  <h1>{calc.nombre}</h1>
+
+  <slot name="calc" />
+
+  <BloqueProducto ubicacion={calc.cluster} />
+
+  <article class="prosa">
+    <p class="firma">
+      Por {existe(AUTOR.url) ? <a href={AUTOR.url}>{AUTOR.nombre}</a> : AUTOR.nombre} ·
+      Revisado el <time datetime={revisado}>{fechaLarga(revisado)}</time>
+    </p>
+
+    <slot />
+
+    <h2>Preguntas frecuentes</h2>
+    {faqs.map((f) => (
+      <details class="faq">
+        <summary>{f.p}</summary>
+        <p>{f.r}</p>
+      </details>
+    ))}
+
+    <h2>Calculadoras relacionadas</h2>
+    <Relacionadas slugs={relacionadas} />
+
+    <h2>Insertar esta calculadora en tu web</h2>
+    <p>Puedes usarla gratis en tu página copiando este código. Incluye un enlace de crédito que te pedimos mantener.</p>
+    <pre class="codigo"><code>{iframe}</code></pre>
+
+    <h2>Metodología y fuentes</h2>
+    <p>
+      Los cálculos se hacen en tu navegador, sin redondeos intermedios; solo se redondea a céntimos al mostrar el resultado. No
+      guardamos ni enviamos los datos que introduces. El enlace para compartir contiene únicamente las cifras de la simulación.
+      {existe('/metodologia/') && <>Las fórmulas y sus comprobaciones están en la <a href="/metodologia/">metodología</a>.</>}
+    </p>
+    <ul>
+      {fuentes.map((f) => (
+        <li><a href={FUENTES[f.clave].url} rel="noopener">{FUENTES[f.clave].nombre}</a>: {f.nota}</li>
+      ))}
+    </ul>
+    <p class="aviso">
+      {SITIO.aviso} Parámetros fiscales revisados por última vez el {fechaLarga(FISCAL.ultimaRevision)}.
+    </p>
+  </article>
+</Base>

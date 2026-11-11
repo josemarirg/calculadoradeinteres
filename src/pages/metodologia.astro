@@ -1,0 +1,102 @@
+---
+import Pagina from '../layouts/Pagina.astro';
+import { calcularCompuesto } from '../lib/calc/compuesto';
+import { calcularDeposito } from '../lib/calc/deposito';
+import { calcularHipoteca, simularAmortizacionAnticipada } from '../lib/calc/hipoteca';
+import { calcularPrestamo } from '../lib/calc/prestamo';
+import { calcularSimple } from '../lib/calc/simple';
+import { euros, fechaLarga, numero, porcentaje } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { FUENTES, SITIO } from '../config/sitio';
+
+// Los casos de comprobación se calculan al compilar con el código real de las calculadoras.
+const ret = FISCAL.retencionIntereses.valor;
+const comp = calcularCompuesto({ capitalInicial: 10_000, aportacion: 200, frecuenciaAportacion: 'mensual', momento: 'final', tipoAnual: 0.05, anios: 20, capitalizacionesPorAnio: 12 });
+const simple = calcularSimple({ capital: 10_000, tipoAnual: 0.05, anios: 10 });
+const prestamo = calcularPrestamo({ importe: 10_000, tin: 0.07, meses: 60 });
+const prestamoCom = calcularPrestamo({ importe: 10_000, tin: 0.07, meses: 60, comisionApertura: 0.01 });
+const hipoteca = calcularHipoteca({ precio: 250_000, ahorro: 50_000, anios: 30, modalidad: 'fija', tin: 0.03 });
+const plazo = simularAmortizacionAnticipada({ capital: 200_000, tin: 0.03, meses: 360, importe: 20_000, trasCuota: 60, modo: 'plazo' });
+const deposito = calcularDeposito({ importe: 10_000, tipo: 0.03, claseTipo: 'TAE', plazo: 6, unidad: 'meses', retencion: ret });
+---
+<Pagina titulo="Metodología" descripcion={`Fórmulas, supuestos y comprobaciones de las calculadoras de ${SITIO.dominio}.`} ruta="/metodologia/" h1="Metodología" actualizado="2026-11-11">
+  <p>Esta página reúne las fórmulas que usan las calculadoras, los supuestos que hacen y cómo se comprueban. El objetivo es que cualquiera pueda reproducir un resultado con una hoja de cálculo.</p>
+
+  <h2>Principios</h2>
+  <ul>
+    <li><strong>Sin redondeos intermedios.</strong> Se calcula con toda la precisión y solo se redondea a céntimos al mostrar el resultado.</li>
+    <li><strong>Cálculo en tu navegador.</strong> Los datos que introduces no se envían a ningún servidor.</li>
+    <li><strong>Pruebas automáticas.</strong> Cada fórmula tiene casos de prueba resueltos a mano, incluidos casos límite: tipo 0 %, plazo de un mes e importes muy grandes.</li>
+    <li><strong>Ejemplos generados por el propio código.</strong> Las cifras de los ejemplos de cada página, y las de esta, se calculan con el mismo código que la calculadora.</li>
+  </ul>
+
+  <h2>Fórmulas y casos de comprobación</h2>
+  <h3><a href="/interes-compuesto/">Interés compuesto</a></h3>
+  <p class="formula">VF = P · (1 + r/n)<sup>n·t</sup> + A · [((1 + r/n)<sup>n·t</sup> − 1) / (r/n)]</p>
+  <p>
+    Con aportaciones al inicio del periodo, el segundo sumando se multiplica por (1 + r/n). Si la frecuencia de aportación no
+    coincide con la de capitalización, se simula mes a mes con el tipo mensual equivalente, (1 + r/n)<sup>n/12</sup>.
+    Comprobación: 10.000 € más 200 € al mes al 5 % durante 20 años, capitalización mensual, dan {euros(comp.valorFinal)}.
+  </p>
+  <h3><a href="/interes-simple/">Interés simple</a></h3>
+  <p class="formula">VF = C · (1 + r · t)</p>
+  <p>Comprobación: 10.000 € al 5 % durante 10 años dan {euros(simple.valorFinal)}; con interés compuesto, {euros(simple.compuesto.valorFinal)}.</p>
+  <h3><a href="/prestamo-personal/">Préstamo personal</a> y <a href="/cuota-hipoteca/">cuota de hipoteca</a></h3>
+  <p class="formula">Cuota = C · i / (1 − (1 + i)<sup>−N</sup>), con i = TIN / 12</p>
+  <p>
+    La última cuota liquida exactamente el capital pendiente. Comprobaciones: 10.000 € al 7 % a 5 años, cuota de {euros(prestamo.cuota)}
+    e intereses de {euros(prestamo.totalIntereses)}; 200.000 € al 3 % a 30 años, cuota de {euros(hipoteca.cuota)} e intereses de {euros(hipoteca.totalIntereses)}.
+  </p>
+  <h3>TAE</h3>
+  <p class="formula">TAE = (1 + i)<sup>12</sup> − 1, con i tal que Importe neto = Σ Cuota<sub>k</sub> / (1 + i)<sup>k</sup></p>
+  <p>
+    Es la tasa interna de rentabilidad mensual de los flujos reales, anualizada, según el criterio del Banco de España. La comisión de
+    apertura se trata como descontada del importe recibido. Comprobaciones: 7 % TIN sin comisiones equivale a {porcentaje(prestamo.tae, 3)};
+    con un 1 % de comisión de apertura, a {porcentaje(prestamoCom.tae, 3)}. En la hipoteca se muestra una TAE orientativa que no incluye gastos vinculados.
+  </p>
+  <h3>Amortización anticipada</h3>
+  <p>
+    Se resta el importe del capital pendiente tras la cuota indicada. Reduciendo cuota, se recalcula con el plazo restante; reduciendo
+    plazo, se mantiene la cuota hasta liquidar la deuda. Comprobación: 20.000 € tras la cuota 60 de la hipoteca anterior, reduciendo
+    plazo, dejan {plazo.cuotasRestantes} cuotas en lugar de 300 y ahorran {euros(plazo.ahorroIntereses)} de intereses. No se incluye la comisión por amortización.
+  </p>
+  <h3><a href="/rentabilidad-deposito/">Depósito a plazo</a></h3>
+  <p class="formula">Con TAE: I = C · ((1 + TAE)<sup>t</sup> − 1) &nbsp;&nbsp; Con TIN: I = C · TIN · t</p>
+  <p>
+    El plazo t va en años (meses/12 o días/365). Comprobación: 10.000 € al 3 % TAE a 6 meses dan {euros(deposito.interesesBrutos)} brutos,
+    {euros(deposito.retencion)} de retención y {euros(deposito.interesesNetos)} netos.
+  </p>
+
+  <h3><a href="/amortizacion-anticipada/">Amortización de una hipoteca en marcha</a></h3>
+  <p>Mismo método que el anterior, partiendo del capital pendiente y las cuotas que quedan. La comisión del banco se resta del ahorro de intereses.</p>
+  <h3><a href="/tin-tae/">Conversión entre TIN y TAE</a></h3>
+  <p class="formula">TAE = (1 + TIN/n)<sup>n</sup> − 1 &nbsp;&nbsp; TIN = n · ((1 + TAE)<sup>1/n</sup> − 1)</p>
+  <p>Válida sin comisiones; n es el número de pagos al año.</p>
+  <h3><a href="/cuenta-remunerada/">Cuenta remunerada</a></h3>
+  <p class="formula">Interés del mes = min(Saldo, Límite) · TIN / 12</p>
+  <p>Liquidación mensual con retención en cada abono; el interés neto se suma al saldo. Con TAE, el tipo mensual es (1 + TAE)<sup>1/12</sup> − 1.</p>
+
+  <h2>Supuestos que conviene conocer</h2>
+  <ul>
+    <li>El tipo de interés se mantiene constante durante todo el plazo, también en la hipoteca variable.</li>
+    <li>En la hipoteca variable el tipo total nunca baja del 0 %.</li>
+    <li>Los pagos de préstamos e hipotecas son mensuales y vencidos.</li>
+    <li>Los depósitos pagan los intereses al vencimiento y no se cancelan antes.</li>
+    <li>No se incluyen gastos que la calculadora no pregunta: seguros, tasación, impuestos de la compraventa o comisiones distintas de la de apertura.</li>
+  </ul>
+
+  <h2>Parámetros fiscales</h2>
+  <p>
+    Las calculadoras que muestran importes netos aplican por defecto una retención del {numero(ret * 100)} % sobre los intereses,
+    que puedes cambiar. Es un pago a cuenta del IRPF, no el impuesto definitivo. Última revisión de los parámetros fiscales:
+    {fechaLarga(FISCAL.ultimaRevision)}. Fuente: <a href={FUENTES.aeat.url} rel="noopener">{FUENTES.aeat.nombre}</a>.
+  </p>
+
+  <h2>Fuentes</h2>
+  <ul>
+    {Object.values(FUENTES).map((f) => <li><a href={f.url} rel="noopener">{f.nombre}</a></li>)}
+  </ul>
+
+  <h2>Si encuentras un error</h2>
+  <p>Escríbenos desde la página de <a href="/contacto/">contacto</a> con los datos que usaste. Lo comprobamos y, si procede, corregimos y actualizamos la fecha de revisión.</p>
+</Pagina>

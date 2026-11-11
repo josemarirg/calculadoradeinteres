@@ -1,0 +1,11 @@
+---
+import Base from '../layouts/Base.astro';
+import { CALCULADORAS } from '../config/sitio';
+---
+<Base titulo="Página no encontrada | Calculadora de Interés" descripcion="La página que buscas no existe." ruta="/404/" noindex>
+  <h1>Página no encontrada</h1>
+  <p>La dirección no existe o ha cambiado. Estas son las calculadoras disponibles:</p>
+  <ul>
+    {CALCULADORAS.filter((c) => c.disponible).map((c) => <li><a href={`/${c.slug}/`}>{c.nombre}</a></li>)}
+  </ul>
+</Base>

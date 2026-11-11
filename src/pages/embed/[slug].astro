@@ -1,0 +1,31 @@
+---
+/** Versiones embebibles (iframe) de todas las calculadoras disponibles. Llevan noindex y enlace de crédito. */
+import Embed from '../../layouts/Embed.astro';
+import CalculadoraCompuesto from '../../components/calc/CalculadoraCompuesto';
+import CalculadoraSimple from '../../components/calc/CalculadoraSimple';
+import CalculadoraPrestamo from '../../components/calc/CalculadoraPrestamo';
+import CalculadoraHipoteca from '../../components/calc/CalculadoraHipoteca';
+import CalculadoraDeposito from '../../components/calc/CalculadoraDeposito';
+import CalculadoraAnticipada from '../../components/calc/CalculadoraAnticipada';
+import CalculadoraTinTae from '../../components/calc/CalculadoraTinTae';
+import CalculadoraCuenta from '../../components/calc/CalculadoraCuenta';
+import { FISCAL } from '../../config/fiscal';
+import { CALCULADORAS, FUENTES, SITIO } from '../../config/sitio';
+
+export function getStaticPaths() {
+  return CALCULADORAS.filter((c) => c.disponible).map((c) => ({ params: { slug: c.slug }, props: { c } }));
+}
+const { c } = Astro.props;
+const url = `${SITIO.url}/${c.slug}/`;
+const ret = FISCAL.retencionIntereses.valor;
+---
+<Embed titulo={c.nombre} ruta={`/${c.slug}/`} nombre={c.nombre}>
+  {c.slug === 'interes-compuesto' && <CalculadoraCompuesto client:load embed retencionPorDefecto={ret} urlPublica={url} />}
+  {c.slug === 'interes-simple' && <CalculadoraSimple client:load embed urlPublica={url} />}
+  {c.slug === 'prestamo-personal' && <CalculadoraPrestamo client:load embed urlPublica={url} />}
+  {c.slug === 'cuota-hipoteca' && <CalculadoraHipoteca client:load embed urlPublica={url} urlEuribor={FUENTES.bde.url} />}
+  {c.slug === 'rentabilidad-deposito' && <CalculadoraDeposito client:load embed retencionPorDefecto={ret} urlPublica={url} />}
+  {c.slug === 'amortizacion-anticipada' && <CalculadoraAnticipada client:load embed urlPublica={url} />}
+  {c.slug === 'tin-tae' && <CalculadoraTinTae client:load embed urlPublica={url} />}
+  {c.slug === 'cuenta-remunerada' && <CalculadoraCuenta client:load embed retencionPorDefecto={ret} urlPublica={url} />}
+</Embed>

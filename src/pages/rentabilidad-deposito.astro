@@ -1,0 +1,130 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraDeposito from '../components/calc/CalculadoraDeposito';
+import { calcularDeposito, type EntradaDeposito } from '../lib/calc/deposito';
+import { euros, numero, porcentaje } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const ret = FISCAL.retencionIntereses.valor;
+const pctRet = numero(ret * 100);
+const base: EntradaDeposito = { importe: 10_000, tipo: 0.03, claseTipo: 'TAE', plazo: 12, unidad: 'meses', retencion: ret };
+const a12 = calcularDeposito(base);
+const a6 = calcularDeposito({ ...base, plazo: 6 });
+const tin90 = calcularDeposito({ ...base, claseTipo: 'TIN', plazo: 90, unidad: 'dias' });
+const factor6 = numero(Math.round(Math.pow(1.03, 0.5) * 1e6) / 1e6);
+
+const faqs = [
+  {
+    p: '¿Qué diferencia hay entre TIN y TAE en un depósito?',
+    r: 'El TIN es el tipo nominal anual que aplica la entidad. La TAE expresa la rentabilidad anual efectiva teniendo en cuenta cuándo se pagan los intereses y, si las hubiera, las comisiones. Para comparar depósitos de distinto plazo o forma de pago, usa la TAE.',
+  },
+  {
+    p: '¿Cuánto me queda neto de un depósito?',
+    r: `Los intereses brutos menos la retención a cuenta del IRPF que practica la entidad. Con la retención del ${pctRet} % que aplica esta calculadora por defecto, 10.000 € al 3 % TAE durante 12 meses generan ${euros(a12.interesesBrutos)} brutos y ${euros(a12.interesesNetos)} netos.`,
+  },
+  {
+    p: '¿Por qué a 6 meses no cobro justo la mitad que a 12?',
+    r: `Porque la TAE es un tipo compuesto. Un 3 % TAE a 6 meses equivale a multiplicar el capital por 1,03 elevado a 0,5, no a aplicar un 1,5 %. En el ejemplo son ${euros(a6.interesesBrutos)} brutos, algo menos de la mitad de ${euros(a12.interesesBrutos)}.`,
+  },
+  {
+    p: '¿La retención es el impuesto definitivo?',
+    r: 'No. Es un pago a cuenta. Los intereses se integran en la base del ahorro de tu declaración de la renta y tributan según la escala vigente; según tu caso, el resultado final puede ser mayor o menor que lo retenido. Consulta la Agencia Tributaria.',
+  },
+  {
+    p: '¿Qué pasa si cancelo el depósito antes del vencimiento?',
+    r: 'Depende del contrato. Algunos depósitos no permiten la cancelación anticipada y otros la penalizan con parte o la totalidad de los intereses. La calculadora supone que mantienes el depósito hasta el final.',
+  },
+  {
+    p: '¿Está garantizado el dinero de un depósito?',
+    r: 'Los depósitos en entidades de crédito están cubiertos por el fondo de garantía de depósitos del país donde la entidad tiene su sede, dentro del límite legal por titular y entidad. Comprueba a qué fondo está adherida la entidad antes de contratar.',
+  },
+];
+---
+<Calculadora
+  slug="rentabilidad-deposito"
+  titulo="Calculadora de depósitos a plazo: intereses brutos y netos"
+  descripcion="Calcula cuánto renta un depósito a plazo fijo: intereses brutos, retención de Hacienda e intereses netos. Con TAE o TIN y plazo en meses o días."
+  revisado="2026-11-11"
+  faqs={faqs}
+  relacionadas={['cuenta-remunerada', 'interes-compuesto', 'tin-tae', 'interes-simple']}
+  fuentes={[
+    { clave: 'bde', nota: 'depósitos a plazo, TIN, TAE y fondo de garantía de depósitos.' },
+    { clave: 'aeat', nota: 'retención y tributación de los intereses.' },
+  ]}
+  altoIframe={640}
+>
+  <CalculadoraDeposito slot="calc" client:load retencionPorDefecto={ret} urlPublica={`${SITIO.url}/rentabilidad-deposito/`} />
+
+  <h2>Cómo se calcula la rentabilidad de un depósito</h2>
+  <p>
+    Un depósito a plazo fijo paga un tipo de interés pactado por dejar una cantidad inmovilizada durante un tiempo. Lo que
+    recibes al vencimiento son los intereses brutos menos la retención que la entidad ingresa a Hacienda en tu nombre.
+    La calculadora obtiene las tres cifras a partir del importe, el tipo y el plazo.
+  </p>
+
+  <h2>Las fórmulas</h2>
+  <p>Si el tipo que conoces es la TAE:</p>
+  <p class="formula">Intereses = C · ((1 + TAE)<sup>t</sup> − 1)</p>
+  <p>Si es el TIN, con pago de intereses al vencimiento:</p>
+  <p class="formula">Intereses = C · TIN · t</p>
+  <ul>
+    <li><strong>C</strong>: importe del depósito.</li>
+    <li><strong>t</strong>: plazo en años (meses/12 o días/365).</li>
+    <li><strong>Intereses netos</strong> = intereses brutos × (1 − retención).</li>
+  </ul>
+  <p>
+    A un año exacto, TAE y TIN dan el mismo resultado. En plazos más cortos o más largos difieren ligeramente, y por eso la
+    calculadora te pregunta cuál de los dos estás introduciendo. Con TIN muestra además la TAE equivalente.
+  </p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>Contratas un depósito de 10.000 € al 3 % TAE a 12 meses. Son los datos con los que se abre la calculadora.</p>
+  <ol>
+    <li>Intereses brutos: 10.000 € × ((1,03)<sup>1</sup> − 1) = {euros(a12.interesesBrutos)}.</li>
+    <li>Retención del {pctRet} %: {euros(a12.interesesBrutos)} × {numero(ret)} = {euros(a12.retencion)}.</li>
+    <li>Intereses netos: {euros(a12.interesesBrutos)} − {euros(a12.retencion)} = <strong>{euros(a12.interesesNetos)}</strong>. Recibes {euros(a12.totalAlVencimiento)}.</li>
+  </ol>
+  <p>
+    El mismo depósito a 6 meses: 10.000 € × ((1,03)<sup>0,5</sup> − 1) = 10.000 € × ({factor6} − 1) = {euros(a6.interesesBrutos)} brutos,
+    {euros(a6.retencion)} de retención y {euros(a6.interesesNetos)} netos.
+  </p>
+  <p>
+    Y con un TIN del 3 % a 90 días: 10.000 € × 0,03 × 90/365 = {euros(tin90.interesesBrutos)} brutos y {euros(tin90.interesesNetos)}
+    netos, que equivalen a una TAE del {porcentaje(tin90.taeEquivalente)}.
+  </p>
+
+  <h2>Cómo usar la calculadora</h2>
+  <p>
+    Copia el tipo de interés tal como lo publica la entidad e indica si es TAE o TIN: suele aparecer la TAE destacada y el TIN en
+    la letra pequeña. Elige el plazo en meses o, si el depósito tiene una duración que no son meses completos, en días. El campo
+    de retención viene vacío y aplica el {pctRet} %; cámbialo solo si en tu caso corresponde otro porcentaje.
+  </p>
+
+  <h2>Impuestos: qué es la retención</h2>
+  <p>
+    Los intereses de un depósito son rendimientos del capital mobiliario. Cuando la entidad te los abona, retiene un porcentaje
+    y lo ingresa en la Agencia Tributaria a cuenta de tu IRPF. La calculadora aplica el {pctRet} % salvo que indiques otro valor.
+    En la declaración de la renta esos intereses se suman al resto de rendimientos del ahorro y tributan según la escala vigente,
+    de modo que la retención puede no coincidir con el impuesto final.
+  </p>
+
+  <h2>Qué mirar además del tipo de interés</h2>
+  <ul>
+    <li><strong>Cancelación anticipada.</strong> Si puedes recuperar el dinero antes del vencimiento y con qué penalización.</li>
+    <li><strong>Requisitos.</strong> Algunos depósitos exigen domiciliar la nómina, abrir una cuenta o ser cliente nuevo.</li>
+    <li><strong>Importe mínimo y máximo.</strong> El tipo anunciado puede aplicarse solo hasta cierta cantidad.</li>
+    <li><strong>Cuándo se pagan los intereses.</strong> Al vencimiento, cada mes o cada trimestre: afecta a la liquidez y a la TAE.</li>
+    <li><strong>Garantía.</strong> Qué fondo de garantía de depósitos cubre a la entidad y con qué límite.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Leer un tipo anual como si fuera del plazo.</strong> Un 3 % anual a 3 meses no da un 3 %, sino aproximadamente la cuarta parte.</li>
+    <li><strong>Comparar un TIN con una TAE.</strong> Compara siempre TAE con TAE.</li>
+    <li><strong>Contar con los intereses brutos.</strong> Lo que llega a tu cuenta es el neto, y aún puede ajustarse en la renta.</li>
+    <li><strong>Ignorar la inflación.</strong> Si los precios suben más que tu rentabilidad neta, el depósito protege parte del poder adquisitivo, pero no todo.</li>
+    <li><strong>No leer las condiciones de cancelación.</strong> Un depósito sin salida anticipada inmoviliza el dinero hasta el final.</li>
+  </ul>
+</Calculadora>

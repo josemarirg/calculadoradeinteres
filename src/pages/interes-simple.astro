@@ -1,0 +1,137 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraSimple from '../components/calc/CalculadoraSimple';
+import { calcularSimple } from '../lib/calc/simple';
+import { euros } from '../lib/formato';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const ej = calcularSimple({ capital: 10_000, tipoAnual: 0.05, anios: 10 });
+const s30 = calcularSimple({ capital: 10_000, tipoAnual: 0.05, anios: 30 });
+const s1 = calcularSimple({ capital: 10_000, tipoAnual: 0.05, anios: 1 });
+const s5 = calcularSimple({ capital: 10_000, tipoAnual: 0.05, anios: 5 });
+const s20 = calcularSimple({ capital: 10_000, tipoAnual: 0.05, anios: 20 });
+const seisMeses = 10_000 * 0.05 * (6 / 12);
+const noventaDias = 10_000 * 0.04 * (90 / 365);
+
+const faqs = [
+  {
+    p: '¿Cuál es la fórmula del interés simple?',
+    r: 'Intereses = capital × tipo de interés anual × tiempo en años. El capital final es el capital inicial más esos intereses: C × (1 + r × t).',
+  },
+  {
+    p: '¿Cómo se calcula el interés simple por meses o por días?',
+    r: `Expresando el tiempo como fracción de año: meses entre 12 o días entre 365. Por ejemplo, 10.000 € al 5 % durante 6 meses generan 10.000 × 0,05 × 6/12 = ${euros(seisMeses)}, y 10.000 € al 4 % durante 90 días, 10.000 × 0,04 × 90/365 = ${euros(noventaDias)}.`,
+  },
+  {
+    p: '¿Cuándo dan lo mismo el interés simple y el compuesto?',
+    r: `Cuando solo hay un periodo de capitalización. A un año con capitalización anual ambos dan el mismo resultado: 10.000 € al 5 % son ${euros(s1.valorFinal)} en los dos casos. La diferencia aparece a partir del segundo periodo y crece con el tiempo.`,
+  },
+  {
+    p: '¿Un depósito usa interés simple o compuesto?',
+    r: 'Depende de cómo pague. Si abona los intereses al vencimiento o los ingresa en tu cuenta sin reinvertirlos, funciona como interés simple. Si los intereses se suman al depósito y siguen generando intereses, es compuesto. La TAE permite comparar productos con distinta forma de pago.',
+  },
+  {
+    p: '¿Por qué algunos cálculos usan años de 360 días?',
+    r: 'Es una convención de algunos contratos (año comercial). Con base 360 el mismo tipo nominal produce algo más de interés por día que con base 365. Esta calculadora trabaja con años completos; para plazos en días, usa la calculadora de depósitos, que aplica base 365.',
+  },
+  {
+    p: '¿Qué me conviene más, interés simple o compuesto?',
+    r: `Con el mismo tipo y más de un periodo, el compuesto siempre da más intereses: si ahorras, juega a tu favor; si debes dinero, en tu contra. Con 10.000 € al 5 % durante 30 años la diferencia es de ${euros(s30.diferencia)}.`,
+  },
+];
+---
+<Calculadora
+  slug="interes-simple"
+  titulo="Calculadora de interés simple (y comparación con el compuesto)"
+  descripcion="Calcula los intereses con la fórmula del interés simple y compáralos con el interés compuesto. Con ejemplo resuelto, tabla año a año y gráfica."
+  revisado="2026-11-11"
+  faqs={faqs}
+  relacionadas={['interes-compuesto', 'rentabilidad-deposito', 'prestamo-personal', 'cuota-hipoteca']}
+  fuentes={[
+    { clave: 'bde', nota: 'conceptos de tipo de interés, TIN y TAE.' },
+    { clave: 'cnmv', nota: 'información para inversores sobre productos de ahorro e inversión.' },
+  ]}
+  altoIframe={760}
+>
+  <CalculadoraSimple slot="calc" client:load urlPublica={`${SITIO.url}/interes-simple/`} />
+
+  <h2>Qué es el interés simple</h2>
+  <p>
+    En el interés simple, los intereses se calculan siempre sobre el capital inicial. Lo que se gana cada año no se suma al capital,
+    así que todos los años se obtiene exactamente la misma cantidad. El crecimiento es una línea recta.
+  </p>
+  <p>
+    Es la forma de cálculo habitual en operaciones cortas, de menos de un año, y en productos que pagan los intereses sin reinvertirlos.
+    En plazos largos se queda por debajo del interés compuesto, y la calculadora muestra cuánto.
+  </p>
+
+  <h2>La fórmula del interés simple</h2>
+  <p class="formula">I = C · r · t &nbsp;&nbsp;&nbsp; VF = C · (1 + r · t)</p>
+  <ul>
+    <li><strong>I</strong>: intereses.</li>
+    <li><strong>C</strong>: capital inicial.</li>
+    <li><strong>r</strong>: tipo de interés anual, en tanto por uno (5 % = 0,05).</li>
+    <li><strong>t</strong>: tiempo en años. Para meses, meses/12; para días, días/365.</li>
+    <li><strong>VF</strong>: capital final.</li>
+  </ul>
+  <p>
+    De la misma fórmula se despeja cualquier dato que falte. El tipo de interés es r = I / (C · t); el tiempo, t = I / (C · r);
+    y el capital necesario para obtener unos intereses dados, C = I / (r · t).
+  </p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>Prestas o inviertes 10.000 € al 5 % anual durante 10 años, sin reinvertir los intereses. Son los datos con los que se abre la calculadora.</p>
+  <ol>
+    <li>Intereses de un año: 10.000 € × 0,05 = 500 €.</li>
+    <li>Intereses de 10 años: 500 € × 10 = <strong>{euros(ej.intereses)}</strong>.</li>
+    <li>Capital final: 10.000 € + {euros(ej.intereses)} = {euros(ej.valorFinal)}.</li>
+  </ol>
+  <p>
+    Si esos intereses se hubieran reinvertido cada año (interés compuesto), el capital final sería {euros(ej.compuesto.valorFinal)}:
+    {euros(ej.diferencia)} más. La distancia se abre con el tiempo: a 30 años, el simple da {euros(s30.valorFinal)} y el compuesto
+    {euros(s30.compuesto.valorFinal)}.
+  </p>
+
+  <h2>Simple frente a compuesto, según el plazo</h2>
+  <p>
+    Con el mismo capital y el mismo tipo, la diferencia entre los dos sistemas depende casi por completo del tiempo. Para 10.000 €
+    al 5 % anual:
+  </p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Plazo</th><th scope="col">Interés simple</th><th scope="col">Interés compuesto</th><th scope="col">Diferencia</th></tr></thead>
+      <tbody>
+        {[s1, s5, ej, s20, s30].map((x, k) => (
+          <tr><td>{[1, 5, 10, 20, 30][k]} {k === 0 ? 'año' : 'años'}</td><td>{euros(x.valorFinal)}</td><td>{euros(x.compuesto.valorFinal)}</td><td>{euros(x.diferencia)}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    En el interés simple cada año suma lo mismo, 500 €. En el compuesto, cada año suma un 5 % de un saldo que ya incluye los
+    intereses anteriores, y por eso la separación entre ambas columnas se acelera. La calculadora dibuja esa separación en la
+    gráfica y la detalla en la tabla año a año.
+  </p>
+
+  <h2>Dónde se usa el interés simple</h2>
+  <ul>
+    <li><strong>Operaciones a menos de un año.</strong> Con un solo periodo no hay nada que reinvertir, así que se calcula con interés simple.</li>
+    <li><strong>Depósitos que pagan al vencimiento o en cuenta.</strong> Si el interés no se añade al depósito, cada periodo se calcula sobre el mismo capital.</li>
+    <li><strong>Deuda pública a corto plazo.</strong> Las Letras del Tesoro se emiten al descuento y no pagan cupones: la ganancia es la diferencia entre el precio de compra y los 1.000 € que se reciben al vencimiento, sin intereses intermedios que reinvertir.</li>
+    <li><strong>Préstamos entre particulares.</strong> Es frecuente pactar un interés anual fijo sobre el importe prestado.</li>
+  </ul>
+  <p>
+    En cambio, la cuota de un préstamo bancario o de una hipoteca no se calcula así: se usa el sistema francés, en el que los
+    intereses de cada mes se calculan sobre el capital que queda por devolver.
+  </p>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Usar el tipo en porcentaje dentro de la fórmula.</strong> Un 5 % es 0,05, no 5.</li>
+    <li><strong>Mezclar unidades de tiempo.</strong> Si el tipo es anual, el tiempo va en años: 18 meses son 1,5 años.</li>
+    <li><strong>Aplicarlo a plazos largos con reinversión.</strong> Si los intereses se reinvierten, la fórmula correcta es la del compuesto y la simple se queda corta.</li>
+    <li><strong>Confundir TIN y TAE.</strong> El TIN es el tipo que entra en la fórmula; la TAE ya incorpora la frecuencia de pago y, en préstamos, las comisiones.</li>
+    <li><strong>Olvidar los impuestos.</strong> Los intereses que cobras tributan en el IRPF; el resultado de esta calculadora es bruto.</li>
+  </ul>
+</Calculadora>

@@ -1,0 +1,129 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraCuenta from '../components/calc/CalculadoraCuenta';
+import { calcularCuenta, type EntradaCuenta } from '../lib/calc/cuenta';
+import { calcularDeposito } from '../lib/calc/deposito';
+import { euros, numero } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const ret = FISCAL.retencionIntereses.valor;
+const pctRet = numero(ret * 100);
+const base: EntradaCuenta = { saldo: 10_000, tipo: 0.02, claseTipo: 'TIN', meses: 12, retencion: ret };
+const ej = calcularCuenta(base);
+const m1 = ej.tabla[0];
+const m2 = ej.tabla[1];
+const deposito = calcularDeposito({ importe: 10_000, tipo: 0.02, claseTipo: 'TIN', plazo: 12, unidad: 'meses', retencion: ret });
+const conLimite = calcularCuenta({ ...base, saldo: 50_000, tipo: 0.024, limiteRemunerado: 30_000 });
+const conAportacion = calcularCuenta({ ...base, saldo: 5_000, meses: 24, aportacionMensual: 300 });
+
+const faqs = [
+  {
+    p: '¿Cuánto dinero da una cuenta remunerada al mes?',
+    r: `El saldo multiplicado por el tipo mensual (TIN/12), menos la retención. Con 10.000 € al 2 % TIN son ${euros(m1.interesBruto)} brutos y ${euros(m1.interesNeto)} netos el primer mes. El 2 % es solo un tipo de ejemplo.`,
+  },
+  {
+    p: '¿En qué se diferencia de un depósito a plazo?',
+    r: 'En la cuenta puedes sacar el dinero cuando quieras, pero la entidad puede cambiar el tipo de interés. En el depósito el tipo queda fijado hasta el vencimiento, a cambio de inmovilizar el dinero o de una penalización por retirarlo antes.',
+  },
+  {
+    p: '¿Hay que pagar impuestos por los intereses?',
+    r: `Sí. La entidad retiene un porcentaje en cada abono (la calculadora aplica el ${pctRet} % si no indicas otro) y lo ingresa en Hacienda a cuenta de tu IRPF. Después, los intereses se declaran en la renta como rendimientos del capital mobiliario.`,
+  },
+  {
+    p: '¿Qué es el saldo máximo remunerado?',
+    r: `El importe hasta el que la entidad paga intereses. Lo que supere ese saldo no genera nada. Con 50.000 € en una cuenta que remunera hasta 30.000 € al 2,4 % TIN, cobras ${euros(conLimite.tabla[0].interesBruto)} brutos al mes, igual que si tuvieras 30.000 €.`,
+  },
+  {
+    p: '¿El tipo anunciado es para siempre?',
+    r: 'No necesariamente. Muchas cuentas ofrecen un tipo promocional durante unos meses o lo condicionan a domiciliar la nómina o recibos. Y, salvo que el contrato lo fije, la entidad puede modificarlo comunicándolo con antelación. La calculadora supone un tipo constante.',
+  },
+  {
+    p: '¿Los intereses se calculan sobre el saldo de final de mes?',
+    r: 'Lo habitual es que se calculen cada día sobre el saldo de ese día y se abonen una vez al mes o al trimestre. La calculadora simplifica: supone que el saldo solo cambia con los intereses y con la aportación mensual que indiques.',
+  },
+];
+---
+<Calculadora
+  slug="cuenta-remunerada"
+  titulo="Calculadora de cuenta remunerada: intereses netos al mes"
+  descripcion="Calcula cuánto te paga una cuenta remunerada cada mes y al año: intereses brutos, retención y netos, con aportaciones y saldo máximo remunerado."
+  revisado="2026-11-11"
+  faqs={faqs}
+  relacionadas={['rentabilidad-deposito', 'interes-compuesto', 'tin-tae', 'interes-simple']}
+  fuentes={[
+    { clave: 'bde', nota: 'cuentas remuneradas, TIN, TAE y fondo de garantía de depósitos.' },
+    { clave: 'aeat', nota: 'retención y tributación de los intereses.' },
+  ]}
+  altoIframe={700}
+>
+  <CalculadoraCuenta slot="calc" client:load retencionPorDefecto={ret} urlPublica={`${SITIO.url}/cuenta-remunerada/`} />
+
+  <h2>Cómo funciona una cuenta remunerada</h2>
+  <p>
+    Es una cuenta que paga intereses por el dinero que mantienes en ella, sin plazo ni permanencia. La entidad calcula los
+    intereses sobre tu saldo y te los abona periódicamente, normalmente cada mes. Como esos intereses se quedan en la cuenta,
+    al mes siguiente también generan intereses: es interés compuesto a pequeña escala.
+  </p>
+
+  <h2>La fórmula</h2>
+  <p class="formula">Interés del mes = Saldo · TIN / 12 &nbsp;&nbsp;&nbsp; Neto = Interés · (1 − retención)</p>
+  <ul>
+    <li>Si conoces la TAE en lugar del TIN, el tipo mensual es (1 + TAE)<sup>1/12</sup> − 1.</li>
+    <li>Si la cuenta tiene un saldo máximo remunerado, los intereses se calculan sobre ese máximo cuando tu saldo lo supera.</li>
+    <li>Cada mes, el interés neto se suma al saldo y entra en el cálculo del mes siguiente.</li>
+  </ul>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Tienes 10.000 € en una cuenta al 2 % TIN que liquida intereses cada mes, y no tocas el saldo durante un año. Son los datos
+    con los que se abre la calculadora; el 2 % es un tipo de ejemplo, no una oferta.
+  </p>
+  <ol>
+    <li>Primer mes: 10.000 € × 0,02 / 12 = {euros(m1.interesBruto)} brutos. Retención del {pctRet} %: {euros(m1.interesBruto - m1.interesNeto)}. Cobras {euros(m1.interesNeto)} y el saldo pasa a {euros(m1.saldo)}.</li>
+    <li>Segundo mes: el cálculo se hace sobre {euros(m1.saldo)}, y los intereses brutos suben a {euros(m2.interesBruto)}.</li>
+    <li>Al cabo de 12 meses: {euros(ej.interesesBrutos)} brutos, {euros(ej.retencion)} de retención y <strong>{euros(ej.interesesNetos)} netos</strong>. Saldo final: {euros(ej.saldoFinal)}.</li>
+  </ol>
+  <p>
+    Si además ingresas dinero cada mes, el efecto se acumula. Con 5.000 € iniciales y 300 € al mes durante dos años al mismo
+    tipo, los intereses netos son {euros(conAportacion.interesesNetos)} y el saldo final {euros(conAportacion.saldoFinal)}.
+  </p>
+
+  <h2>Cuenta remunerada o depósito</h2>
+  <p>
+    Con el mismo TIN, la cuenta que abona intereses cada mes rinde un poco más que un depósito que los paga al vencimiento,
+    porque cada abono empieza a generar intereses enseguida. Con 10.000 € al 2 % TIN durante un año, la cuenta deja
+    {euros(ej.interesesNetos)} netos y el depósito {euros(deposito.interesesNetos)}. La diferencia es pequeña.
+  </p>
+  <p>
+    Lo que de verdad los distingue es otra cosa. En la cuenta, el dinero está disponible en todo momento, pero el tipo puede
+    cambiar. En el depósito, el tipo está garantizado hasta el vencimiento, pero el dinero queda comprometido. Para comparar
+    dos ofertas concretas, fíjate en la TAE de cada una y en cuánto tiempo se mantiene.
+  </p>
+
+  <h2>Cómo usar la calculadora</h2>
+  <p>
+    Introduce el saldo, el tipo que publica la entidad y si es TIN o TAE. En «Más opciones» puedes añadir una aportación
+    mensual, el saldo máximo remunerado si lo hay, y cambiar la retención. La tabla mes a mes muestra cuánto cobras en cada
+    liquidación.
+  </p>
+
+  <h2>Qué mirar además del tipo</h2>
+  <ul>
+    <li><strong>Durante cuánto tiempo se aplica.</strong> Un tipo alto durante tres meses puede rendir menos que uno moderado todo el año. Calcula cada tramo por separado.</li>
+    <li><strong>Hasta qué saldo.</strong> El tipo anunciado suele aplicarse solo hasta un importe máximo.</li>
+    <li><strong>Qué te piden a cambio.</strong> Nómina, recibos, uso de tarjeta o ser cliente nuevo.</li>
+    <li><strong>Comisiones.</strong> Una comisión de mantenimiento puede anular los intereses en saldos bajos.</li>
+    <li><strong>Garantía.</strong> Qué fondo de garantía de depósitos cubre a la entidad, y de qué país.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Aplicar el tipo anual a un mes.</strong> Un 2 % anual es aproximadamente un 0,17 % al mes.</li>
+    <li><strong>Contar con los intereses brutos.</strong> A tu cuenta llega el neto, y en la renta puede haber un ajuste.</li>
+    <li><strong>Ignorar el saldo máximo.</strong> Por encima del límite, el dinero no rinde.</li>
+    <li><strong>Suponer que el tipo no cambiará.</strong> A diferencia de un depósito, la entidad puede modificarlo.</li>
+    <li><strong>Olvidar la inflación.</strong> Si los precios suben más que tu interés neto, el saldo pierde poder de compra aunque crezca.</li>
+  </ul>
+</Calculadora>

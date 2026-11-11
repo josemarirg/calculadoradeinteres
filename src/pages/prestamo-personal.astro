@@ -1,0 +1,125 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraPrestamo from '../components/calc/CalculadoraPrestamo';
+import { calcularPrestamo } from '../lib/calc/prestamo';
+import { euros, porcentaje } from '../lib/formato';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const ej = calcularPrestamo({ importe: 10_000, tin: 0.07, meses: 60 });
+const f1 = ej.cuadro[0];
+const f60 = ej.cuadro[59];
+const conComision = calcularPrestamo({ importe: 10_000, tin: 0.07, meses: 60, comisionApertura: 0.01 });
+const a3 = calcularPrestamo({ importe: 10_000, tin: 0.07, meses: 36 });
+const a7 = calcularPrestamo({ importe: 10_000, tin: 0.07, meses: 84 });
+
+const faqs = [
+  {
+    p: '¿Qué diferencia hay entre TIN y TAE?',
+    r: `El TIN es el tipo de interés puro con el que se calculan los intereses de cada cuota. La TAE añade el efecto de la frecuencia de pago y de las comisiones y gastos obligatorios, y por eso es la cifra que sirve para comparar préstamos. En el ejemplo, un TIN del 7 % sin comisiones equivale a una TAE del ${porcentaje(ej.tae)}.`,
+  },
+  {
+    p: '¿Cómo afecta la comisión de apertura a la TAE?',
+    r: `La encarece, porque pagas lo mismo por recibir menos dinero. Con una comisión de apertura del 1 % en el ejemplo (${euros(conComision.comision)}, recibes ${euros(conComision.importeNeto)}), la TAE pasa del ${porcentaje(ej.tae)} al ${porcentaje(conComision.tae)} aunque la cuota no cambie.`,
+  },
+  {
+    p: '¿Por qué al principio pago más intereses que al final?',
+    r: `Porque los intereses de cada mes se calculan sobre el capital que aún debes, que es mayor al principio. En el ejemplo, la primera cuota lleva ${euros(f1.intereses)} de intereses y la última solo ${euros(f60.intereses)}. La cuota es la misma; cambia su composición.`,
+  },
+  {
+    p: '¿Qué pasa si alargo el plazo?',
+    r: `Baja la cuota y suben los intereses totales. Los mismos 10.000 € al 7 % cuestan ${euros(a3.cuota)} al mes y ${euros(a3.totalIntereses)} de intereses a 3 años, y ${euros(a7.cuota)} al mes y ${euros(a7.totalIntereses)} de intereses a 7 años.`,
+  },
+  {
+    p: '¿Puedo devolver el préstamo antes de tiempo?',
+    r: 'Sí, el reembolso anticipado total o parcial es un derecho del consumidor. La entidad puede cobrar una compensación, que la normativa de crédito al consumo limita. Revisa tu contrato y la información del Portal del Cliente Bancario del Banco de España.',
+  },
+  {
+    p: '¿La TAE de la calculadora coincidirá con la de mi oferta?',
+    r: 'Solo si tu oferta no tiene más costes que los intereses y la comisión de apertura. Si incluye otros gastos obligatorios, como un seguro vinculado, la TAE real será mayor. La cifra válida es siempre la de la información precontractual que te entrega la entidad.',
+  },
+];
+---
+<Calculadora
+  slug="prestamo-personal"
+  titulo="Calculadora de préstamo personal: cuota, intereses y TAE"
+  descripcion="Calcula la cuota mensual de un préstamo personal, los intereses totales, la TAE con comisión de apertura y el cuadro de amortización completo."
+  revisado="2026-11-11"
+  faqs={faqs}
+  relacionadas={['tin-tae', 'cuota-hipoteca', 'amortizacion-anticipada', 'interes-simple']}
+  fuentes={[
+    { clave: 'bde', nota: 'préstamos personales, TIN, TAE y derechos del cliente bancario.' },
+    { clave: 'boe', nota: 'normativa de contratos de crédito al consumo.' },
+  ]}
+>
+  <CalculadoraPrestamo slot="calc" client:load urlPublica={`${SITIO.url}/prestamo-personal/`} />
+
+  <h2>Cómo se calcula la cuota de un préstamo</h2>
+  <p>
+    Casi todos los préstamos personales en España usan el sistema de amortización francés: pagas la misma cuota todos los meses
+    y cada cuota tiene dos partes. Una son los intereses del mes, calculados sobre lo que todavía debes. La otra es capital que
+    devuelves. Como la deuda va bajando, cada mes pagas algo menos de intereses y algo más de capital.
+  </p>
+
+  <h2>La fórmula de la cuota</h2>
+  <p class="formula">Cuota = C · i / (1 − (1 + i)<sup>−N</sup>)</p>
+  <ul>
+    <li><strong>C</strong>: importe del préstamo.</li>
+    <li><strong>i</strong>: tipo de interés mensual, es decir, TIN / 12 en tanto por uno.</li>
+    <li><strong>N</strong>: número de cuotas mensuales.</li>
+  </ul>
+  <p>Si el TIN es 0 %, la cuota es simplemente el importe dividido entre el número de meses.</p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>Pides 10.000 € a 5 años (60 cuotas) con un TIN del 7 %. Son los datos con los que se abre la calculadora.</p>
+  <ol>
+    <li>Tipo mensual: i = 0,07 / 12 = 0,0058333.</li>
+    <li>Cuota: 10.000 × 0,0058333 / (1 − 1,0058333<sup>−60</sup>) = <strong>{euros(ej.cuota)}</strong>.</li>
+    <li>Primera cuota: intereses 10.000 × 0,0058333 = {euros(f1.intereses)}; capital {euros(ej.cuota)} − {euros(f1.intereses)} = {euros(f1.amortizacion)}; quedan por devolver {euros(f1.saldo)}.</li>
+    <li>Total de las 60 cuotas: {euros(ej.totalPagado)}, de los que {euros(ej.totalIntereses)} son intereses.</li>
+  </ol>
+
+  <h2>Cómo se calcula la TAE</h2>
+  <p>
+    La TAE es el tipo anual que iguala el dinero que recibes de verdad con todo lo que pagas. Se obtiene buscando el tipo mensual
+    que hace que el valor actual de todas las cuotas coincida con el importe neto recibido (la tasa interna de rentabilidad) y
+    anualizándolo: TAE = (1 + i)<sup>12</sup> − 1. Es el criterio que fija el Banco de España.
+  </p>
+  <p>
+    Sin comisiones, la TAE depende solo del TIN: (1 + 0,07/12)<sup>12</sup> − 1 = {porcentaje(ej.tae)}. Con una comisión de apertura
+    del 1 % recibes {euros(conComision.importeNeto)} en vez de 10.000 €, pagas las mismas cuotas y la TAE sube al
+    {porcentaje(conComision.tae)}. La calculadora supone que la comisión se descuenta del importe que recibes, no que se financia.
+  </p>
+
+  <h2>Cómo leer el cuadro de amortización</h2>
+  <p>
+    El cuadro muestra, cuota a cuota, cuánto pagas, qué parte son intereses, qué parte es capital y cuánto queda pendiente. Sirve
+    para saber cuánto deberías en una fecha concreta, por ejemplo si te planteas cancelar el préstamo antes de tiempo. La última
+    cuota ajusta los céntimos para que el capital pendiente quede exactamente en cero.
+  </p>
+
+  <h2>Qué comparar antes de firmar</h2>
+  <p>
+    Antes de contratar, la entidad debe entregarte la información precontractual con las condiciones exactas de tu oferta. Con ella
+    y con esta calculadora puedes comprobar tres cifras:
+  </p>
+  <ul>
+    <li><strong>La TAE</strong>, que resume el coste anual incluyendo comisiones y gastos obligatorios. Es la cifra que permite comparar ofertas de distintas entidades.</li>
+    <li><strong>El importe total adeudado</strong>, es decir, la suma de todas las cuotas más las comisiones. Te dice cuánto devolverás en euros.</li>
+    <li><strong>La cuota mensual</strong>, para comprobar que cabe con holgura en tu presupuesto durante todo el plazo.</li>
+  </ul>
+  <p>
+    Si la cuota o la TAE que obtienes aquí no coinciden con las de la oferta, la diferencia suele estar en un gasto que la
+    calculadora no conoce, como un seguro, o en que la comisión de apertura se suma al importe financiado en lugar de descontarse.
+    Pregunta a la entidad antes de firmar.
+  </p>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Comparar por TIN o por cuota.</strong> Dos préstamos con la misma cuota pueden tener costes distintos si uno cobra comisiones. Compara por TAE y por importe total a pagar.</li>
+    <li><strong>Mirar solo la cuota mensual.</strong> Alargar el plazo la baja, pero aumenta los intereses totales.</li>
+    <li><strong>Olvidar los productos vinculados.</strong> Un seguro obligatorio es un coste del préstamo aunque no aparezca en el TIN.</li>
+    <li><strong>Dar por hecho el tipo anunciado.</strong> El tipo «desde» de la publicidad no es necesariamente el que te ofrecerán: depende de tu perfil.</li>
+    <li><strong>Pedir más de lo necesario.</strong> Cada euro de más genera intereses durante todo el plazo.</li>
+  </ul>
+</Calculadora>

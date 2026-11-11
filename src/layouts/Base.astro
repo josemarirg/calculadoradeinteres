@@ -1,0 +1,141 @@
+---
+import '../styles/global.css';
+import Consentimiento from '../components/Consentimiento.astro';
+import { CLUSTERES, PAGINAS_PIE, SITIO } from '../config/sitio';
+
+interface Miga { nombre: string; url?: string }
+interface Props {
+  titulo: string;
+  descripcion: string;
+  /** Ruta canónica, con barra inicial y final: «/interes-compuesto/». */
+  ruta: string;
+  migas?: Miga[];
+  /** Nodos schema.org adicionales para el @graph de la página. */
+  jsonld?: Record<string, unknown>[];
+  noindex?: boolean;
+}
+const { titulo, descripcion, ruta, migas = [], jsonld = [], noindex = false } = Astro.props;
+const canonica = new URL(ruta, SITIO.url).href;
+const absoluta = (url: string) => new URL(url, SITIO.url).href;
+
+const organizacion = {
+  '@type': 'Organization',
+  '@id': `${SITIO.url}/#organizacion`,
+  name: SITIO.nombre,
+  url: `${SITIO.url}/`,
+  logo: absoluta('/favicon.svg'),
+};
+const breadcrumb = migas.length
+  ? [{
+      '@type': 'BreadcrumbList',
+      itemListElement: [{ nombre: 'Inicio', url: '/' }, ...migas].map((m, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: m.nombre,
+        item: absoluta(m.url ?? ruta),
+      })),
+    }]
+  : [];
+const grafo = { '@context': 'https://schema.org', '@graph': [organizacion, ...breadcrumb, ...jsonld] };
+const pie = PAGINAS_PIE.filter((p) => p.disponible);
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulo}</title>
+    <meta name="description" content={descripcion} />
+    <link rel="canonical" href={canonica} />
+    {noindex && <meta name="robots" content="noindex, follow" />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITIO.nombre} />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:title" content={titulo} />
+    <meta property="og:description" content={descripcion} />
+    <meta property="og:url" content={canonica} />
+    <meta property="og:image" content={absoluta('/og.png')} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script is:inline>
+      document.documentElement.classList.add('js');
+      try {
+        var t = localStorage.getItem('tema');
+        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+    <script type="application/ld+json" set:html={JSON.stringify(grafo)} />
+  </head>
+  <body>
+    <a class="saltar" href="#contenido">Saltar al contenido</a>
+    <header class="cabecera">
+      <div class="contenedor cabecera__fila">
+        <a class="marca" href="/" title="Inicio">
+          <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 26c9 0 15-4 23-19" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/><circle cx="27" cy="7" r="3" fill="currentColor"/></svg>
+          <span>calculadora<b>de</b>interés</span>
+        </a>
+        <button type="button" class="boton-tema" id="boton-tema" aria-label="Cambiar entre modo claro y oscuro">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 12.5v-11a5.5 5.5 0 0 1 0 11Z" fill="currentColor"/></svg>
+        </button>
+        <button type="button" class="boton-menu" id="boton-menu" aria-expanded="false" aria-controls="nav">Menú</button>
+        <nav class="nav" id="nav" aria-label="Secciones">
+          <ul>
+            {CLUSTERES.map((c) => (
+              <li><a href={`/${c.id}/`} aria-current={ruta === `/${c.id}/` ? 'page' : undefined}>{c.nombre}</a></li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    {migas.length > 0 && (
+      <nav class="migas contenedor" aria-label="Ruta de navegación">
+        <ol>
+          <li><a href="/">Inicio</a></li>
+          {migas.map((m, i) => (
+            <li>{m.url && i < migas.length - 1 ? <a href={m.url}>{m.nombre}</a> : <span aria-current="page">{m.nombre}</span>}</li>
+          ))}
+        </ol>
+      </nav>
+    )}
+
+    <main id="contenido" class="contenedor">
+      <slot />
+    </main>
+
+    <footer class="pie">
+      <div class="contenedor">
+        {pie.length > 0 && (
+          <ul>
+            {pie.map((p) => <li><a href={p.url}>{p.nombre}</a></li>)}
+          </ul>
+        )}
+        <p>{SITIO.aviso} Las cifras dependen de los datos que introduces y de supuestos que explicamos en cada página.</p>
+        <p>© {new Date().getFullYear()} {SITIO.dominio}</p>
+      </div>
+    </footer>
+
+    <Consentimiento />
+
+    <script is:inline>
+      (function () {
+        var raiz = document.documentElement;
+        var menu = document.getElementById('boton-menu');
+        var nav = document.getElementById('nav');
+        menu.addEventListener('click', function () {
+          var abierta = nav.classList.toggle('nav--abierta');
+          menu.setAttribute('aria-expanded', String(abierta));
+        });
+        document.getElementById('boton-tema').addEventListener('click', function () {
+          var oscuro = raiz.dataset.theme ? raiz.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+          raiz.dataset.theme = oscuro ? 'light' : 'dark';
+          try { localStorage.setItem('tema', raiz.dataset.theme); } catch (e) {}
+        });
+      })();
+    </script>
+  </body>
+</html>

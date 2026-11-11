@@ -1,0 +1,62 @@
+---
+/**
+ * Banner de cookies. Solo existe si hay terceros que requieren consentimiento.
+ * - «Rechazar» y «Aceptar» tienen el mismo aspecto y están al mismo nivel.
+ * - No bloquea la página (sin muro de cookies) y no carga nada antes de elegir.
+ * - La elección se guarda en localStorage y se puede cambiar en /cookies/.
+ */
+import { MESES_VALIDEZ, TERCEROS, VERSION_CONSENTIMIENTO } from '../config/cookies';
+const activo = TERCEROS.length > 0;
+const datos = { v: VERSION_CONSENTIMIENTO, meses: MESES_VALIDEZ, terceros: TERCEROS.map((t) => ({ categoria: t.categoria, src: t.src })) };
+---
+{activo && (
+  <>
+    <div id="cookies" class="cookies" role="region" aria-label="Aviso de cookies" hidden>
+      <p>
+        Usamos cookies propias y de terceros para analítica y publicidad solo si las aceptas.
+        Puedes rechazarlas o elegir cuáles permites. <a href="/cookies/">Más información</a>.
+      </p>
+      <div class="cookies__botones">
+        <button type="button" class="boton" data-cookies="rechazar">Rechazar</button>
+        <button type="button" class="boton" data-cookies="aceptar">Aceptar</button>
+        <a class="cookies__config" href="/cookies/#preferencias">Configurar</a>
+      </div>
+    </div>
+    <script is:inline define:vars={{ datos }}>
+      (function () {
+        var CLAVE = 'consentimiento';
+        var cargados = {};
+        function leer() {
+          try {
+            var c = JSON.parse(localStorage.getItem(CLAVE) || 'null');
+            if (!c || c.v !== datos.v) return null;
+            var limite = new Date(c.fecha); limite.setMonth(limite.getMonth() + datos.meses);
+            return limite > new Date() ? c : null;
+          } catch (e) { return null; }
+        }
+        function aplicar(c) {
+          datos.terceros.forEach(function (t) {
+            if (!c[t.categoria] || cargados[t.src]) return;
+            cargados[t.src] = true;
+            var s = document.createElement('script'); s.src = t.src; s.async = true; document.head.appendChild(s);
+          });
+        }
+        function guardar(eleccion) {
+          var c = { v: datos.v, fecha: new Date().toISOString(), analitica: !!eleccion.analitica, publicidad: !!eleccion.publicidad };
+          try { localStorage.setItem(CLAVE, JSON.stringify(c)); } catch (e) {}
+          document.getElementById('cookies').hidden = true;
+          aplicar(c);
+        }
+        window.cookiesSitio = { leer: leer, guardar: guardar };
+        var actual = leer();
+        var banner = document.getElementById('cookies');
+        if (actual) aplicar(actual); else banner.hidden = false;
+        banner.addEventListener('click', function (e) {
+          var accion = e.target && e.target.getAttribute && e.target.getAttribute('data-cookies');
+          if (accion === 'aceptar') guardar({ analitica: true, publicidad: true });
+          if (accion === 'rechazar') guardar({ analitica: false, publicidad: false });
+        });
+      })();
+    </script>
+  </>
+)}

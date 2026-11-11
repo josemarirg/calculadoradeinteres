@@ -1,0 +1,91 @@
+---
+import Pagina from '../layouts/Pagina.astro';
+import { CATEGORIAS, TERCEROS, type Categoria } from '../config/cookies';
+import { SITIO } from '../config/sitio';
+const hayTerceros = TERCEROS.length > 0;
+const categorias = [...new Set(TERCEROS.map((t) => t.categoria))] as Categoria[];
+---
+<Pagina titulo="Política de cookies" descripcion={`Qué cookies usa ${SITIO.dominio} y cómo cambiar tus preferencias.`} ruta="/cookies/" h1="Política de cookies" actualizado="2026-11-11">
+  <p>
+    Las cookies son pequeños archivos que una web guarda en tu dispositivo. Esta página explica cuáles usa {SITIO.dominio},
+    siguiendo la guía sobre el uso de cookies de la Agencia Española de Protección de Datos (actualizada en julio de 2023).
+  </p>
+
+  <p>
+    La norma aplicable es el artículo 22.2 de la Ley 34/2002 (LSSI): solo pueden usarse cookies no necesarias si la persona ha
+    dado antes su consentimiento informado. Las estrictamente necesarias y las que recuerdan una preferencia que tú mismo eliges
+    están exentas.
+  </p>
+
+  <h2>Almacenamiento técnico (no necesita consentimiento)</h2>
+  <p>El sitio no instala cookies propias. Guarda en el almacenamiento local de tu navegador solo lo imprescindible para recordar tus elecciones:</p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Nombre</th><th scope="col">Finalidad</th><th scope="col">Duración</th></tr></thead>
+      <tbody>
+        <tr><td>tema</td><td>Recordar si prefieres el modo claro u oscuro</td><td>Hasta que lo borres</td></tr>
+        <tr><td>consentimiento</td><td>Recordar tu elección sobre cookies</td><td>24 meses como máximo</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Estos datos no salen de tu dispositivo y no sirven para identificarte ni para seguir tu navegación.</p>
+
+  <h2>Cookies de analítica y publicidad</h2>
+  {hayTerceros ? (
+    <>
+      <p>Solo se cargan si las aceptas. Rechazarlas no limita el uso de las calculadoras. Puedes retirar el consentimiento en cualquier momento desde esta página. Algunos proveedores pueden tratar datos fuera del Espacio Económico Europeo; consulta la política de cada uno.</p>
+      <div class="tabla-scroll">
+        <table>
+          <thead><tr><th scope="col">Servicio</th><th scope="col">Proveedor</th><th scope="col">Tipo</th><th scope="col">Finalidad</th><th scope="col">Duración</th></tr></thead>
+          <tbody>
+            {TERCEROS.map((t) => (
+              <tr><td>{t.nombre}</td><td>{t.proveedor}</td><td>{CATEGORIAS[t.categoria].nombre}</td><td>{t.finalidad}</td><td>{t.duracion}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="preferencias">Tus preferencias</h2>
+      <form class="preferencias" id="form-cookies">
+        {categorias.map((c) => (
+          <label>
+            <input type="checkbox" name={c} />
+            <span><strong>{CATEGORIAS[c].nombre}.</strong> {CATEGORIAS[c].descripcion}</span>
+          </label>
+        ))}
+        <div class="acciones">
+          <button type="submit" class="boton">Guardar preferencias</button>
+          <span class="acciones__estado" role="status" id="estado-cookies"></span>
+        </div>
+      </form>
+      <script is:inline>
+        // Espera a que la página termine de cargar: el gestor de consentimiento se define al final del documento.
+        document.addEventListener('DOMContentLoaded', function () {
+          var f = document.getElementById('form-cookies');
+          var api = window.cookiesSitio;
+          var actual = api && api.leer();
+          if (actual) Array.prototype.forEach.call(f.elements, function (el) { if (el.type === 'checkbox') el.checked = !!actual[el.name]; });
+          f.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var eleccion = {};
+            Array.prototype.forEach.call(f.elements, function (el) { if (el.type === 'checkbox') eleccion[el.name] = el.checked; });
+            api.guardar(eleccion);
+            document.getElementById('estado-cookies').textContent = 'Preferencias guardadas. Si has retirado un permiso, se aplicará al cargar la siguiente página.';
+          });
+        });
+      </script>
+    </>
+  ) : (
+    <p id="preferencias">
+      Ahora mismo este sitio <strong>no usa cookies de analítica ni de publicidad</strong>, ni propias ni de terceros. Por eso no
+      ves ningún aviso de cookies: no hay nada que aceptar o rechazar. Si en el futuro se añaden, se pedirá antes tu
+      consentimiento con un aviso en el que rechazar será tan fácil como aceptar, y podrás cambiar tu elección en esta página.
+    </p>
+  )}
+
+  <h2>Enlaces a otras webs</h2>
+  <p>Si sigues un enlace de afiliación u otro enlace externo, la web de destino puede instalar sus propias cookies conforme a su política.</p>
+
+  <h2>Cómo borrar o bloquear cookies</h2>
+  <p>Puedes eliminar las cookies y el almacenamiento local desde la configuración de privacidad de tu navegador, o navegar en modo privado.</p>
+</Pagina>

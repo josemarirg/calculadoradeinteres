@@ -1,0 +1,31 @@
+---
+import Base from '../layouts/Base.astro';
+import { CALCULADORAS, CLUSTERES } from '../config/sitio';
+
+export function getStaticPaths() {
+  return CLUSTERES.map((cl) => ({ params: { cluster: cl.id }, props: { cl } }));
+}
+const { cl } = Astro.props;
+const lista = CALCULADORAS.filter((c) => c.cluster === cl.id);
+---
+<Base
+  titulo={`Calculadoras de ${cl.nombre.toLowerCase()} | Calculadora de Interés`}
+  descripcion={`Calculadoras de ${cl.nombre.toLowerCase()} para España. ${cl.descripcion}`}
+  ruta={`/${cl.id}/`}
+  migas={[{ nombre: cl.nombre }]}
+  noindex={!lista.some((c) => c.disponible)}
+>
+  <h1>Calculadoras de {cl.nombre.toLowerCase()}</h1>
+  <p>{cl.descripcion}</p>
+  <ul class="relacionadas">
+    {lista.map((c) => (
+      <li>
+        {c.disponible ? (
+          <a class="tarjeta" href={`/${c.slug}/`}><strong>{c.nombre}</strong><span>{c.descripcion}</span></a>
+        ) : (
+          <div class="tarjeta tarjeta--pronto"><strong>{c.nombre}</strong><span class="etiqueta">Próximamente</span></div>
+        )}
+      </li>
+    ))}
+  </ul>
+</Base>

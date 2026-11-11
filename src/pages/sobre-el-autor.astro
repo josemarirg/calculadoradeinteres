@@ -1,0 +1,21 @@
+---
+import Pagina from '../layouts/Pagina.astro';
+import { AUTOR, SITIO } from '../config/sitio';
+import { TITULAR } from '../config/titular';
+const persona = { '@type': 'Person', '@id': `${SITIO.url}/#autor`, name: AUTOR.nombre, url: `${SITIO.url}${AUTOR.url}`, email: `mailto:${TITULAR.email}` };
+---
+<Pagina titulo="Sobre el autor" descripcion={`Quién está detrás de ${SITIO.dominio} y cómo se elaboran las calculadoras.`} ruta="/sobre-el-autor/" h1="Sobre el autor" actualizado="2026-11-11" jsonld={[persona]}>
+  <h2>{AUTOR.nombre}</h2>
+  <p>Autor y responsable de {SITIO.dominio}.</p>
+
+  <h2>Cómo trabajo</h2>
+  <ul>
+    <li><strong>Cada fórmula está escrita y explicada</strong> en la página de su calculadora y en la <a href="/metodologia/">metodología</a>.</li>
+    <li><strong>Cada cálculo tiene pruebas automáticas</strong> con casos resueltos a mano. Los ejemplos del texto salen del mismo código que la calculadora.</li>
+    <li><strong>Las cifras fiscales y normativas se revisan</strong> contra las fuentes oficiales, y cada página muestra la fecha de su última revisión.</li>
+    <li><strong>No doy recomendaciones personalizadas.</strong> Las calculadoras sirven para entender números, no para decirte qué contratar.</li>
+  </ul>
+
+  <h2>Contacto</h2>
+  <p>Para avisar de un error o proponer una mejora: <a href={`mailto:${TITULAR.email}`}>{TITULAR.email}</a>.</p>
+</Pagina>

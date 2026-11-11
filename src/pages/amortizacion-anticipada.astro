@@ -1,0 +1,124 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraAnticipada from '../components/calc/CalculadoraAnticipada';
+import { duracion } from '../components/calc/ui';
+import { compararAmortizacion } from '../lib/calc/hipoteca';
+import { euros } from '../lib/formato';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const base = { capitalPendiente: 150_000, tin: 0.03, mesesRestantes: 240, importe: 10_000 };
+const ej = compararAmortizacion(base);
+const conComision = compararAmortizacion({ ...base, comision: 0.005 });
+const tarde = compararAmortizacion({ capitalPendiente: 60_000, tin: 0.03, mesesRestantes: 84, importe: 10_000 });
+const interesMes = 150_000 * 0.03 / 12;
+
+const faqs = [
+  {
+    p: '¿Qué es mejor, reducir cuota o reducir plazo?',
+    r: `Reducir plazo ahorra más intereses; reducir cuota libera dinero cada mes. En el ejemplo, amortizar 10.000 € ahorra ${euros(ej.reducirPlazo.ahorroIntereses)} reduciendo plazo y ${euros(ej.reducirCuota.ahorroIntereses)} reduciendo cuota. La elección depende de si prefieres pagar menos en total o tener más margen mensual.`,
+  },
+  {
+    p: '¿Cuándo compensa más amortizar?',
+    r: `Cuanto antes, porque en el sistema francés los intereses se concentran en los primeros años. Los mismos 10.000 € ahorran ${euros(ej.reducirPlazo.ahorroIntereses)} cuando quedan 20 años y ${euros(tarde.reducirPlazo.ahorroIntereses)} cuando quedan 7, en ambos casos al 3 % y reduciendo plazo.`,
+  },
+  {
+    p: '¿El banco puede cobrarme por amortizar?',
+    r: 'Sí, si la escritura lo prevé. En los préstamos sujetos a la Ley 5/2019 la comisión tiene topes: en tipo variable, hasta el 0,25 % durante los tres primeros años o hasta el 0,15 % durante los cinco primeros, según lo pactado; en tipo fijo, hasta el 2 % durante los diez primeros años y hasta el 1,5 % después. Nunca puede superar la pérdida financiera de la entidad. Las hipotecas anteriores se rigen por su escritura y la normativa previa.',
+  },
+  {
+    p: '¿Puedo reducir cuota y plazo a la vez?',
+    r: 'Depende de la entidad. Algunas permiten repartir la amortización entre las dos opciones. La calculadora compara los dos extremos; un reparto dará un resultado intermedio.',
+  },
+  {
+    p: '¿Qué datos necesito y dónde los encuentro?',
+    r: 'El capital pendiente, el tipo de interés actual y el número de cuotas que quedan. Los tres aparecen en el último recibo de la hipoteca o en la banca en línea de tu entidad.',
+  },
+  {
+    p: '¿Sirve para una hipoteca variable?',
+    r: 'Sí, con una salvedad: el cálculo usa el tipo actual para todo el plazo restante. Si el Euríbor sube, el ahorro real será mayor; si baja, menor.',
+  },
+];
+---
+<Calculadora
+  slug="amortizacion-anticipada"
+  titulo="Calculadora de amortización anticipada de hipoteca"
+  descripcion="Calcula cuánto ahorras al amortizar tu hipoteca antes de tiempo y compara reducir cuota con reducir plazo, con la comisión del banco incluida."
+  revisado="2026-11-11"
+  faqs={faqs}
+  relacionadas={['cuota-hipoteca', 'tin-tae', 'prestamo-personal', 'cuenta-remunerada']}
+  fuentes={[
+    { clave: 'bde', nota: 'reembolso anticipado de préstamos hipotecarios.' },
+    { clave: 'boe', nota: 'Ley 5/2019, reguladora de los contratos de crédito inmobiliario (art. 23).' },
+  ]}
+  altoIframe={700}
+>
+  <CalculadoraAnticipada slot="calc" client:load urlPublica={`${SITIO.url}/amortizacion-anticipada/`} />
+
+  <h2>Qué es amortizar anticipadamente</h2>
+  <p>
+    Es devolver al banco, de una vez, una parte del capital que aún debes, además de tus cuotas habituales. Ese dinero deja de
+    generar intereses desde ese momento, y por eso el ahorro es mayor de lo que parece: no solo evitas los intereses de ese mes,
+    sino los de todos los meses que quedaban.
+  </p>
+  <p>
+    Después de amortizar tienes que elegir qué hacer con la hipoteca que queda: pagar la misma cuota y terminar antes, o
+    mantener la fecha de fin y pagar menos cada mes.
+  </p>
+
+  <h2>Cómo se calcula</h2>
+  <p>La cuota de una hipoteca con sistema francés es:</p>
+  <p class="formula">Cuota = C · i / (1 − (1 + i)<sup>−N</sup>)</p>
+  <ul>
+    <li><strong>C</strong>: capital pendiente. <strong>i</strong>: tipo mensual (TIN/12). <strong>N</strong>: cuotas que quedan.</li>
+    <li><strong>Reducir cuota</strong>: se recalcula la fórmula con C menos el importe amortizado y el mismo N.</li>
+    <li><strong>Reducir plazo</strong>: se mantiene la cuota y se cuenta cuántas hacen falta para liquidar el nuevo capital. La última suele ser más pequeña.</li>
+  </ul>
+  <p>El ahorro es la diferencia entre los intereses que habrías pagado sin amortizar y los que pagarás después, menos la comisión.</p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Te quedan 150.000 € por pagar, al 3 % TIN, y 240 cuotas (20 años). Amortizas 10.000 €. Son los datos con los que se abre
+    la calculadora.
+  </p>
+  <ol>
+    <li>Cuota actual: {euros(ej.cuotaActual)}. Si no hicieras nada, pagarías {euros(ej.interesesSinAmortizar)} de intereses hasta el final.</li>
+    <li>
+      <strong>Reduciendo plazo:</strong> sigues pagando {euros(ej.cuotaActual)} y terminas en {ej.reducirPlazo.cuotasRestantes} cuotas en lugar de 240,
+      es decir, {duracion(ej.reducirPlazo.mesesAhorrados)} antes. Ahorras <strong>{euros(ej.reducirPlazo.ahorroIntereses)}</strong>.
+    </li>
+    <li>
+      <strong>Reduciendo cuota:</strong> la cuota baja a {euros(ej.reducirCuota.nuevaCuota)} durante las mismas 240 cuotas.
+      Ahorras {euros(ej.reducirCuota.ahorroIntereses)}.
+    </li>
+    <li>Con una comisión del 0,5 % pagarías {euros(conComision.comision)} al banco, y el ahorro neto reduciendo plazo sería de {euros(conComision.reducirPlazo.ahorroNeto)}.</li>
+  </ol>
+
+  <h2>Por qué reducir plazo ahorra más</h2>
+  <p>
+    Los intereses de cada mes se calculan sobre el capital pendiente. En el ejemplo, el primer mes son 150.000 € × 0,03 / 12 =
+    {euros(interesMes)}. Si reduces plazo, sigues pagando la cuota de antes, así que cada mes devuelves más capital y la deuda
+    baja más deprisa. Si reduces cuota, devuelves el capital al mismo ritmo que antes, durante los mismos años.
+  </p>
+  <p>
+    Eso no convierte reducir plazo en la mejor opción para todo el mundo. Una cuota más baja da margen ante un imprevisto o una
+    subida del Euríbor, y ese margen también tiene valor. La calculadora muestra las dos cifras para que compares.
+  </p>
+
+  <h2>Qué mirar antes de amortizar</h2>
+  <ul>
+    <li><strong>La comisión.</strong> Está en tu escritura. Introdúcela en la calculadora para ver el ahorro neto.</li>
+    <li><strong>Tu colchón.</strong> El dinero amortizado no se recupera. Conviene conservar un fondo para imprevistos antes de destinar ahorro a la hipoteca.</li>
+    <li><strong>La alternativa.</strong> Amortizar equivale a obtener una rentabilidad igual al tipo de tu hipoteca, sin riesgo. Compárala con lo que te daría ese dinero, neto de impuestos, en una cuenta o un depósito.</li>
+    <li><strong>La deducción por vivienda.</strong> Si compraste antes de 2013 y aún aplicas la deducción por vivienda habitual, lo que amortizas puede contar para ella. Consúltalo en la Agencia Tributaria.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Usar el capital inicial en vez del pendiente.</strong> La calculadora necesita lo que debes hoy.</li>
+    <li><strong>Olvidar la comisión.</strong> En amortizaciones pequeñas puede comerse una parte apreciable del ahorro.</li>
+    <li><strong>Comparar solo el ahorro total.</strong> Reducir cuota ahorra menos, pero mejora tu liquidez mensual desde el primer día.</li>
+    <li><strong>Quedarse sin ahorro.</strong> Amortizar todo lo disponible y tener que pedir después un préstamo personal, más caro, anula la ventaja.</li>
+    <li><strong>Dar por fijo el tipo de una variable.</strong> El ahorro calculado supone que el tipo actual no cambia.</li>
+  </ul>
+</Calculadora>

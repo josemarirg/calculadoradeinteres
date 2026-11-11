@@ -1,0 +1,14 @@
+---
+/** Plantilla de páginas de texto: legales, metodología, autor… */
+import Base from './Base.astro';
+import { fechaLarga } from '../lib/formato';
+interface Props { titulo: string; descripcion: string; ruta: string; h1: string; actualizado: string; jsonld?: Record<string, unknown>[] }
+const { titulo, descripcion, ruta, h1, actualizado, jsonld } = Astro.props;
+---
+<Base titulo={`${titulo} | Calculadora de Interés`} descripcion={descripcion} ruta={ruta} migas={[{ nombre: h1 }]} jsonld={jsonld}>
+  <article class="prosa prosa--pagina">
+    <h1>{h1}</h1>
+    <slot />
+    <p class="firma">Última actualización: <time datetime={actualizado}>{fechaLarga(actualizado)}</time></p>
+  </article>
+</Base>

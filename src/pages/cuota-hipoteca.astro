@@ -1,0 +1,132 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraHipoteca from '../components/calc/CalculadoraHipoteca';
+import { calcularHipoteca, simularAmortizacionAnticipada, type EntradaHipoteca } from '../lib/calc/hipoteca';
+import { duracion } from '../components/calc/ui';
+import { euros, porcentaje } from '../lib/formato';
+import { FUENTES, SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const base: EntradaHipoteca = { precio: 250_000, ahorro: 50_000, anios: 30, modalidad: 'fija', tin: 0.03 };
+const ej = calcularHipoteca(base);
+const f1 = ej.cuadro[0];
+const a20 = calcularHipoteca({ ...base, anios: 20 });
+const al4 = calcularHipoteca({ ...base, tin: 0.04 });
+const anticipada = { capital: 200_000, tin: 0.03, meses: 360, importe: 20_000, trasCuota: 60 };
+const redCuota = simularAmortizacionAnticipada({ ...anticipada, modo: 'cuota' });
+const redPlazo = simularAmortizacionAnticipada({ ...anticipada, modo: 'plazo' });
+
+const faqs = [
+  {
+    p: '¿Cómo se calcula la cuota de una hipoteca?',
+    r: `Con el sistema francés: cuota = C × i / (1 − (1 + i)^(−N)), donde C es el importe de la hipoteca, i el tipo mensual (TIN/12) y N el número de cuotas. Para 200.000 € al 3 % a 30 años la cuota es de ${euros(ej.cuota)}.`,
+  },
+  {
+    p: '¿Qué es mejor, reducir cuota o reducir plazo?',
+    r: `Reducir plazo ahorra más intereses; reducir cuota libera dinero cada mes. En el ejemplo, amortizar 20.000 € a los 5 años ahorra ${euros(redPlazo.ahorroIntereses)} de intereses si reduces plazo y ${euros(redCuota.ahorroIntereses)} si reduces cuota. Cuál conviene depende de tu situación y de tu margen mensual.`,
+  },
+  {
+    p: '¿Cómo se calcula la cuota de una hipoteca variable?',
+    r: 'Igual que la de una fija, pero con un tipo que cambia: el Euríbor más el diferencial pactado. En cada revisión, cada 6 o 12 meses según el contrato, se recalcula la cuota con el Euríbor de ese momento y el capital pendiente. La calculadora usa un único valor de Euríbor para todo el plazo.',
+  },
+  {
+    p: '¿Qué pasa con la cuota si sube el tipo de interés?',
+    r: `Sube también. Para 200.000 € a 30 años, pasar del 3 % al 4 % eleva la cuota de ${euros(ej.cuota)} a ${euros(al4.cuota)} y los intereses totales de ${euros(ej.totalIntereses)} a ${euros(al4.totalIntereses)}. Con una hipoteca variable conviene probar varios escenarios de Euríbor.`,
+  },
+  {
+    p: '¿Por qué la TAE de mi oferta es distinta de la que sale aquí?',
+    r: 'Porque la TAE de una oferta real incluye los gastos que la entidad exige, como la tasación, las comisiones y los seguros vinculados. Esta calculadora solo conoce el tipo de interés, así que muestra una TAE orientativa sin esos gastos. La cifra válida es la de la ficha de información que te entrega el banco.',
+  },
+  {
+    p: '¿La cuota incluye los gastos de compra de la vivienda?',
+    r: 'No. Impuestos, notaría, registro, gestoría y tasación se pagan aparte y normalmente con ahorro propio, además de la entrada. Tenlo en cuenta al rellenar el campo «Ahorro aportado»: solo debe incluir lo que destinas a pagar el precio.',
+  },
+  {
+    p: '¿Puedo introducir un Euríbor negativo?',
+    r: 'Sí, el campo admite valores negativos. La calculadora nunca aplica un tipo total inferior al 0 %: si Euríbor más diferencial da un resultado negativo, calcula la cuota sin intereses.',
+  },
+];
+---
+<Calculadora
+  slug="cuota-hipoteca"
+  titulo="Calculadora de cuota de hipoteca y amortización anticipada"
+  descripcion="Calcula la cuota mensual de tu hipoteca fija o variable, los intereses totales y cuánto ahorras al amortizar anticipadamente reduciendo cuota o plazo."
+  revisado="2026-11-11"
+  faqs={faqs}
+  relacionadas={['amortizacion-anticipada', 'prestamo-personal', 'tin-tae', 'interes-compuesto']}
+  fuentes={[
+    { clave: 'bde', nota: 'préstamos hipotecarios, Euríbor y tipos de referencia oficiales.' },
+    { clave: 'boe', nota: 'Ley 5/2019, reguladora de los contratos de crédito inmobiliario.' },
+  ]}
+  altoIframe={900}
+>
+  <CalculadoraHipoteca slot="calc" client:load urlPublica={`${SITIO.url}/cuota-hipoteca/`} urlEuribor={FUENTES.bde.url} />
+
+  <h2>Cómo se calcula la cuota de una hipoteca</h2>
+  <p>
+    La hipoteca es el precio de la vivienda menos el ahorro que aportas. Sobre ese importe se aplica el sistema de amortización
+    francés: una cuota mensual constante, mientras no cambie el tipo de interés, que incluye los intereses del mes y una parte
+    de devolución de capital. Al principio casi toda la cuota son intereses; con los años, la proporción se invierte.
+  </p>
+
+  <h2>La fórmula</h2>
+  <p class="formula">Cuota = C · i / (1 − (1 + i)<sup>−N</sup>)</p>
+  <ul>
+    <li><strong>C</strong>: importe de la hipoteca (precio − ahorro aportado).</li>
+    <li><strong>i</strong>: tipo de interés mensual, TIN / 12 en tanto por uno. En una variable, TIN = Euríbor + diferencial.</li>
+    <li><strong>N</strong>: número de cuotas (años × 12).</li>
+  </ul>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Compras una vivienda de 250.000 € y aportas 50.000 €. Pides una hipoteca fija de 200.000 € al 3 % TIN a 30 años.
+    Son los datos con los que se abre la calculadora.
+  </p>
+  <ol>
+    <li>Importe: 250.000 € − 50.000 € = 200.000 €, el {porcentaje(ej.financiacion, 0)} del precio.</li>
+    <li>Tipo mensual: 0,03 / 12 = 0,0025. Número de cuotas: 30 × 12 = 360.</li>
+    <li>Cuota: 200.000 × 0,0025 / (1 − 1,0025<sup>−360</sup>) = <strong>{euros(ej.cuota)}</strong>.</li>
+    <li>Primera cuota: {euros(f1.intereses)} de intereses y {euros(f1.amortizacion)} de capital.</li>
+    <li>Total pagado en 30 años: {euros(ej.totalPagado)}, de los que {euros(ej.totalIntereses)} son intereses.</li>
+  </ol>
+  <p>
+    Con el mismo tipo a 20 años, la cuota sube a {euros(a20.cuota)} y los intereses bajan a {euros(a20.totalIntereses)}.
+    El plazo es la palanca que más mueve el coste total.
+  </p>
+
+  <h2>Hipoteca fija o variable</h2>
+  <p>
+    En una hipoteca fija el tipo no cambia y la cuota es la misma de principio a fin. En una variable, el tipo es la suma de un
+    índice de referencia, casi siempre el Euríbor a un año, y un diferencial fijo; la cuota se recalcula en cada revisión, cada 6 o 12 meses según el contrato. Las
+    mixtas combinan un primer periodo fijo con otro variable.
+  </p>
+  <p>
+    La calculadora no trae ningún Euríbor por defecto: introduce el valor oficial que publica el Banco de España. El resultado
+    supone que ese valor se mantiene todo el plazo, algo que no ocurrirá. Úsalo para comparar escenarios, por ejemplo con un
+    Euríbor uno o dos puntos más alto, y ver si la cuota seguiría siendo asumible.
+  </p>
+
+  <h2>Amortización anticipada: cuota o plazo</h2>
+  <p>
+    Amortizar anticipadamente es devolver de golpe una parte del capital. Después puedes mantener el plazo y pagar una cuota menor,
+    o mantener la cuota y terminar antes. En el ejemplo, si a los 5 años (tras la cuota 60) quedan {euros(redCuota.saldoAntes)}
+    por pagar y amortizas 20.000 €:
+  </p>
+  <ul>
+    <li><strong>Reduciendo cuota</strong>, pasa de {euros(redCuota.cuotaOriginal)} a {euros(redCuota.nuevaCuota)} y ahorras {euros(redCuota.ahorroIntereses)} de intereses.</li>
+    <li><strong>Reduciendo plazo</strong>, terminas {duracion(redPlazo.mesesAhorrados)} antes y ahorras {euros(redPlazo.ahorroIntereses)} de intereses.</li>
+  </ul>
+  <p>
+    La simulación no incluye la comisión por amortización anticipada. La Ley 5/2019 la limita y depende del tipo de hipoteca y de
+    los años transcurridos: consulta tu escritura.
+  </p>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Contar todo el ahorro como entrada.</strong> Parte se va en impuestos y gastos de la compraventa.</li>
+    <li><strong>Calcular la variable solo con el Euríbor de hoy.</strong> La cuota cambiará; prueba también escenarios menos favorables.</li>
+    <li><strong>Comparar ofertas por TIN.</strong> Las bonificaciones por contratar seguros u otros productos tienen un coste; compara por TAE y por coste total.</li>
+    <li><strong>Elegir el plazo solo por la cuota.</strong> Diez años más de plazo pueden suponer decenas de miles de euros más en intereses.</li>
+    <li><strong>Olvidar los gastos recurrentes.</strong> Seguro de hogar, comunidad e IBI no están en la cuota, pero salen del mismo presupuesto.</li>
+  </ul>
+</Calculadora>

@@ -1,0 +1,24 @@
+---
+import '../styles/global.css';
+import { SITIO } from '../config/sitio';
+interface Props { titulo: string; ruta: string; nombre: string }
+const { titulo, ruta, nombre } = Astro.props;
+const canonica = new URL(ruta, SITIO.url).href;
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titulo}</title>
+    <meta name="robots" content="noindex, follow" />
+    <link rel="canonical" href={canonica} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="embed">
+    <slot />
+    <p class="embed__credito">
+      <a href={canonica} target="_blank" rel="noopener">{nombre}</a> de {SITIO.dominio}
+    </p>
+  </body>
+</html>

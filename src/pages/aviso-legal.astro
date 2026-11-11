@@ -1,0 +1,66 @@
+---
+import Pagina from '../layouts/Pagina.astro';
+import { SITIO } from '../config/sitio';
+import { TITULAR } from '../config/titular';
+---
+<Pagina titulo="Aviso legal" descripcion={`Aviso legal y condiciones de uso de ${SITIO.dominio}.`} ruta="/aviso-legal/" h1="Aviso legal" actualizado="2026-11-11">
+  <h2>Titular del sitio</h2>
+  <p>En cumplimiento del artículo 10 de la Ley 34/2002, de servicios de la sociedad de la información y de comercio electrónico (LSSI), se informa de los datos del titular de {SITIO.dominio}:</p>
+  <ul class="datos-titular">
+    <li><strong>Titular:</strong> {TITULAR.nombre} (persona física)</li>
+    <li><strong>NIF:</strong> {TITULAR.nif}</li>
+    <li><strong>Domicilio:</strong> {TITULAR.direccion}</li>
+    <li><strong>Correo electrónico:</strong> <a href={`mailto:${TITULAR.email}`}>{TITULAR.email}</a></li>
+  </ul>
+
+  <p>Para cualquier comunicación directa con el titular puedes usar esa dirección de correo electrónico.</p>
+
+  <h2>Objeto</h2>
+  <p>Este sitio ofrece calculadoras financieras gratuitas y contenido divulgativo sobre ahorro, deuda, hipotecas e inversión. El acceso es libre y no requiere registro.</p>
+
+  <h2>Carácter informativo: no es asesoramiento</h2>
+  <p>
+    Los resultados de las calculadoras son orientativos. Dependen de los datos que introduce cada persona y de supuestos
+    simplificadores que se explican en cada página. Nada de lo publicado constituye asesoramiento financiero, fiscal o legal,
+    ni una recomendación personalizada de inversión, ni una oferta de contratación. Antes de tomar una decisión, consulta la
+    información oficial de la entidad y, si lo necesitas, a un profesional autorizado.
+  </p>
+
+  <h2>Qué no es este sitio</h2>
+  <p>
+    El titular no es una entidad de crédito, una empresa de servicios de inversión ni un asesor financiero, y no está inscrito
+    en los registros del Banco de España ni de la Comisión Nacional del Mercado de Valores. No comercializa productos financieros,
+    no recibe fondos de los usuarios y no interviene en la contratación.
+  </p>
+  <p>
+    Tampoco actúa como intermediario de crédito. Cuando una página enlaza a una entidad o a un intermediario de crédito
+    registrado, el sitio se limita a remitirte a su web: no recoge tus datos, no te presenta ofertas adaptadas a tu caso y no
+    te asiste en los trámites. Cualquier solicitud la haces directamente ante esa entidad, bajo sus condiciones.
+  </p>
+
+  <h2>Publicidad y afiliación</h2>
+  <p>
+    El sitio puede incluir enlaces de afiliación a productos de terceros, siempre identificados como publicidad. Si contratas a
+    través de ellos, el titular puede recibir una comisión sin coste para ti. Las condiciones de cada producto son las que publica
+    la entidad en su propia web, que es la única responsable de ellas, y pueden cambiar sin previo aviso. Más detalles en <a href="/como-nos-financiamos/">Cómo nos financiamos</a>.
+  </p>
+
+  <h2>Propiedad intelectual</h2>
+  <p>
+    Los textos, el diseño y el código del sitio pertenecen al titular, salvo indicación en contrario. Puedes insertar las
+    calculadoras en tu web con el código que facilitamos, manteniendo el enlace de crédito. Cualquier otro uso requiere autorización.
+  </p>
+
+  <h2>Responsabilidad</h2>
+  <p>
+    El titular procura que la información sea correcta y esté actualizada, pero no garantiza la ausencia de errores ni se hace
+    responsable de las decisiones tomadas a partir de ella. Tampoco responde del contenido de los sitios de terceros enlazados.
+    Si detectas un error, escríbenos a <a href={`mailto:${TITULAR.email}`}>{TITULAR.email}</a>.
+  </p>
+
+  <h2>Enlaces externos</h2>
+  <p>Los enlaces a organismos oficiales y a otras webs se ofrecen como referencia. El titular no controla su contenido ni responde de él.</p>
+
+  <h2>Legislación aplicable</h2>
+  <p>Este aviso legal se rige por la legislación española. En caso de conflicto con personas consumidoras, serán competentes los juzgados y tribunales de su domicilio.</p>
+</Pagina>

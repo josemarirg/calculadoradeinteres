@@ -1,0 +1,156 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraCompuesto from '../components/calc/CalculadoraCompuesto';
+import { calcularCompuesto, valorFuturo, type EntradaCompuesto } from '../lib/calc/compuesto';
+import { calcularSimple } from '../lib/calc/simple';
+import { euros, numero } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { SITIO } from '../config/sitio';
+
+// ── Todas las cifras del texto salen del mismo módulo que usa la calculadora
+//    y que cubren los tests: no pueden desincronizarse. ──
+const ejemplo: EntradaCompuesto = {
+  capitalInicial: 10_000, aportacion: 200, frecuenciaAportacion: 'mensual', momento: 'final',
+  tipoAnual: 0.05, anios: 20, capitalizacionesPorAnio: 12,
+};
+const ej = calcularCompuesto(ejemplo);
+const i = 0.05 / 12;
+const g = Math.pow(1 + i, 240);
+const factor = numero(Math.round(g * 1e5) / 1e5);
+const parteCapital = 10_000 * g;
+const parteAportaciones = 200 * ((g - 1) / i);
+const alInicio = calcularCompuesto({ ...ejemplo, momento: 'inicio' }).valorFinal;
+const real = calcularCompuesto({ ...ejemplo, inflacion: 0.02 }).valorFinalReal;
+const al4 = calcularCompuesto({ ...ejemplo, tipoAnual: 0.04 }).valorFinal;
+const al6 = calcularCompuesto({ ...ejemplo, tipoAnual: 0.06 }).valorFinal;
+const pctRet = numero(FISCAL.retencionIntereses.valor * 100);
+const conRetencion = calcularCompuesto({ ...ejemplo, retencion: FISCAL.retencionIntereses.valor, modoRetencion: 'anual' });
+const capAnual = valorFuturo(10_000, 0, 0.05, 1, 1);
+const capMensual = valorFuturo(10_000, 0, 0.05, 12, 1);
+const capDiaria = valorFuturo(10_000, 0, 0.05, 365, 1);
+const s30 = calcularSimple({ capital: 10_000, tipoAnual: 0.05, anios: 30 });
+const pctIntereses = Math.round((ej.interesesBrutos / ej.valorFinal) * 100);
+const aniosDoblar = numero(Math.round((Math.log(2) / Math.log(1.05)) * 10) / 10);
+
+const faqs = [
+  {
+    p: '¿Qué diferencia hay entre interés simple e interés compuesto?',
+    r: `En el interés simple los intereses se calculan siempre sobre el capital inicial. En el compuesto, los intereses se suman al capital y generan a su vez nuevos intereses. Con 10.000 € al 5 % durante 30 años, el interés simple da ${euros(s30.valorFinal)} y el compuesto ${euros(s30.compuesto.valorFinal)}.`,
+  },
+  {
+    p: '¿Qué es la frecuencia de capitalización y cuánto influye?',
+    r: `Es cada cuánto se suman los intereses al capital. Cuanto más a menudo, algo más se gana, pero la diferencia es pequeña: 10.000 € al 5 % nominal durante un año son ${euros(capAnual)} con capitalización anual, ${euros(capMensual)} con mensual y ${euros(capDiaria)} con diaria.`,
+  },
+  {
+    p: '¿Es mejor aportar al inicio o al final de cada mes?',
+    r: `Al inicio, porque cada aportación pasa un mes más generando intereses. En el ejemplo de esta página (10.000 € y 200 € al mes al 5 % durante 20 años) la diferencia es de ${euros(alInicio - ej.valorFinal)}: ${euros(alInicio)} frente a ${euros(ej.valorFinal)}.`,
+  },
+  {
+    p: '¿Cómo afecta la inflación al resultado?',
+    r: `La inflación no cambia los euros que tendrás, pero sí lo que podrás comprar con ellos. Si indicas una inflación, la calculadora muestra también el resultado «en euros de hoy». En el ejemplo, con una inflación del 2 % anual, los ${euros(ej.valorFinal)} equivalen a ${euros(real)} de poder adquisitivo actual.`,
+  },
+  {
+    p: '¿La calculadora tiene en cuenta los impuestos?',
+    r: 'Solo si activas la retención en «Más opciones». Puedes aplicarla cada año sobre los intereses, como ocurre en cuentas y depósitos, o una sola vez al final sobre la ganancia, como en un fondo de inversión. La retención es un pago a cuenta del IRPF: el impuesto definitivo se calcula en tu declaración de la renta.',
+  },
+  {
+    p: '¿Qué tipo de interés debo poner?',
+    r: 'En una cuenta remunerada o un depósito, el que publica la entidad. En una inversión sin rentabilidad garantizada nadie puede saberlo de antemano: lo prudente es probar varios escenarios, incluido uno pesimista, y no tomar ninguno como una previsión.',
+  },
+  {
+    p: '¿El resultado está garantizado?',
+    r: 'No. Es una proyección matemática que supone un tipo de interés constante durante todo el plazo. Sirve para comparar escenarios, no para predecir lo que rendirá un producto concreto. No constituye asesoramiento financiero.',
+  },
+];
+---
+<Calculadora
+  slug="interes-compuesto"
+  titulo="Calculadora de interés compuesto con aportaciones"
+  descripcion="Calcula cuánto crecerá tu ahorro con interés compuesto: capital inicial, aportaciones mensuales, inflación e impuestos. Con tabla año a año, gráfica y fórmula."
+  revisado="2026-11-11"
+  faqs={faqs}
+  relacionadas={['cuenta-remunerada', 'rentabilidad-deposito', 'interes-simple', 'cuota-hipoteca']}
+  fuentes={[
+    { clave: 'bde', nota: 'TIN, TAE y funcionamiento de cuentas y depósitos.' },
+    { clave: 'aeat', nota: 'tributación y retenciones de los rendimientos del ahorro.' },
+    { clave: 'cnmv', nota: 'información para inversores sobre fondos y sus riesgos.' },
+    { clave: 'ine', nota: 'evolución de la inflación (IPC).' },
+  ]}
+>
+  <CalculadoraCompuesto slot="calc" client:load retencionPorDefecto={FISCAL.retencionIntereses.valor} urlPublica={`${SITIO.url}/interes-compuesto/`} />
+
+  <h2>Qué es el interés compuesto</h2>
+  <p>
+    El interés compuesto es el que se obtiene cuando los intereses que genera un capital no se retiran, sino que se suman a él
+    y empiezan a generar intereses también. Cada periodo se calcula sobre una cantidad algo mayor que el anterior, y por eso el
+    crecimiento no es una línea recta sino una curva que se acelera con el tiempo.
+  </p>
+  <p>
+    Lo que más pesa en el resultado es el plazo. En el ejemplo de más abajo, al cabo de 20 años el {pctIntereses} % del capital
+    final son intereses y no dinero aportado. A un 5 % anual, un capital tarda unos {aniosDoblar} años en duplicarse sin añadir nada.
+  </p>
+
+  <h2>La fórmula del interés compuesto</h2>
+  <p>Con un capital inicial y aportaciones periódicas al final de cada periodo, el valor futuro es:</p>
+  <p class="formula">VF = P · (1 + r/n)<sup>n·t</sup> + A · [((1 + r/n)<sup>n·t</sup> − 1) / (r/n)]</p>
+  <ul>
+    <li><strong>P</strong>: capital inicial.</li>
+    <li><strong>A</strong>: aportación de cada periodo.</li>
+    <li><strong>r</strong>: tipo de interés nominal anual, en tanto por uno (5 % = 0,05).</li>
+    <li><strong>n</strong>: número de veces que se capitalizan los intereses al año (12 si es mensual).</li>
+    <li><strong>t</strong>: años.</li>
+  </ul>
+  <p>
+    Si las aportaciones se hacen al inicio de cada periodo, el segundo sumando se multiplica por (1 + r/n). Cuando aportas con una
+    frecuencia distinta de la de capitalización (por ejemplo, cada mes con capitalización anual), la fórmula cerrada ya no vale y la
+    calculadora simula el saldo mes a mes.
+  </p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Tienes 10.000 € y añades 200 € al final de cada mes durante 20 años, a un 5 % nominal anual con capitalización mensual.
+    Son los datos con los que se abre la calculadora.
+  </p>
+  <ol>
+    <li>Tipo por periodo: r/n = 0,05 / 12 = 0,0041667. Número de periodos: n·t = 12 × 20 = 240.</li>
+    <li>Factor de crecimiento: (1,0041667)<sup>240</sup> = {factor}.</li>
+    <li>Lo que crece el capital inicial: 10.000 € × {factor} = {euros(parteCapital)}.</li>
+    <li>Lo que suman las aportaciones: 200 € × ({factor} − 1) / 0,0041667 = {euros(parteAportaciones)}.</li>
+    <li>Capital final: {euros(parteCapital)} + {euros(parteAportaciones)} = <strong>{euros(ej.valorFinal)}</strong>.</li>
+  </ol>
+  <p>
+    De ese total, {euros(ej.totalAportado)} los has puesto tú (10.000 € iniciales más 240 aportaciones de 200 €) y
+    {euros(ej.interesesBrutos)} son intereses. Con el mismo plan a un 4 % el resultado sería {euros(al4)}, y a un 6 %, {euros(al6)}:
+    un punto de diferencia en el tipo mueve mucho el resultado a largo plazo.
+  </p>
+
+  <h2>Cómo interpretar las opciones</h2>
+  <h3>Capitalización de intereses</h3>
+  <p>
+    Indica cada cuánto se suman los intereses al saldo. Si el tipo que conoces es una TAE, elige capitalización anual: la TAE ya
+    incluye el efecto de la capitalización y así no se cuenta dos veces. Si es un TIN, elige la frecuencia con la que el producto
+    abona los intereses.
+  </p>
+  <h3>Inflación</h3>
+  <p>
+    Es opcional. Añade al resultado su equivalente en euros de hoy. En el ejemplo, con una inflación del 2 % anual, los
+    {euros(ej.valorFinal)} tendrían el poder de compra de {euros(real)} actuales. El dato histórico del IPC lo publica el INE.
+  </p>
+  <h3>Retención fiscal</h3>
+  <p>
+    En España los intereses de cuentas y depósitos son rendimientos del capital mobiliario y la entidad practica una retención a
+    cuenta del IRPF cada vez que los abona. En los fondos de inversión no se tributa hasta el reembolso. La calculadora permite
+    simular ambos casos; si no indicas otro porcentaje aplica el {pctRet} %. En el ejemplo, con retención anual del {pctRet} %, el
+    capital final baja a {euros(conRetencion.valorFinal)}. La retención no es el impuesto definitivo: este se ajusta en la
+    declaración de la renta. Comprueba el porcentaje vigente en la Agencia Tributaria.
+  </p>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Mezclar TIN y TAE.</strong> Introducir una TAE con capitalización mensual infla el resultado. Con TAE, capitalización anual.</li>
+    <li><strong>Suponer que el tipo será constante.</strong> Un depósito tiene un tipo fijo durante su plazo; una inversión en bolsa no, y puede perder valor. La calculadora no refleja esa variabilidad.</li>
+    <li><strong>Olvidar la inflación.</strong> En plazos largos, la cifra nominal impresiona más de lo que realmente permitirá comprar.</li>
+    <li><strong>No descontar comisiones.</strong> Si el producto cobra una comisión anual sobre el saldo, réstala del tipo de interés antes de calcular.</li>
+    <li><strong>Comparar solo por rentabilidad.</strong> Dos productos con el mismo tipo pueden tener riesgos, liquidez y garantías muy distintos.</li>
+  </ul>
+</Calculadora>

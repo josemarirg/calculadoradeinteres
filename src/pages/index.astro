@@ -1,0 +1,28 @@
+---
+import Base from '../layouts/Base.astro';
+import { CALCULADORAS, CLUSTERES, SITIO } from '../config/sitio';
+const sitioWeb = { '@type': 'WebSite', '@id': `${SITIO.url}/#sitio`, name: SITIO.nombre, url: `${SITIO.url}/`, inLanguage: SITIO.idioma, publisher: { '@id': `${SITIO.url}/#organizacion` } };
+---
+<Base titulo="Calculadora de interés: compuesto, préstamos, hipotecas y depósitos" descripcion={SITIO.descripcion} ruta="/" jsonld={[sitioWeb]}>
+  <div class="portada">
+    <h1>Calculadoras de interés para decidir con números</h1>
+    <p>Herramientas gratuitas para España. Cada una enseña la fórmula que usa, un ejemplo resuelto y las fuentes oficiales, para que puedas comprobar el resultado.</p>
+  </div>
+  {CLUSTERES.map((cl) => (
+    <section class="cluster" aria-labelledby={`cl-${cl.id}`}>
+      <h2 id={`cl-${cl.id}`}><a href={`/${cl.id}/`}>{cl.nombre}</a></h2>
+      <p>{cl.descripcion}</p>
+      <ul class="relacionadas">
+        {CALCULADORAS.filter((c) => c.cluster === cl.id).map((c) => (
+          <li>
+            {c.disponible ? (
+              <a class="tarjeta" href={`/${c.slug}/`}><strong>{c.corto}</strong><span>{c.descripcion}</span></a>
+            ) : (
+              <div class="tarjeta tarjeta--pronto"><strong>{c.corto}</strong><span class="etiqueta">Próximamente</span></div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+</Base>

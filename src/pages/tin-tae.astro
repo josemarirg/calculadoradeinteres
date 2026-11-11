@@ -1,0 +1,145 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraTinTae from '../components/calc/CalculadoraTinTae';
+import { calcularPrestamo } from '../lib/calc/prestamo';
+import { convertirTipo } from '../lib/calc/tintae';
+import { euros, porcentaje } from '../lib/formato';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con los mismos módulos que usan las calculadoras.
+const ej = convertirTipo({ tipo: 0.07, sentido: 'tin-a-tae', pagosPorAnio: 12 });
+const trimestral = convertirTipo({ tipo: 0.07, sentido: 'tin-a-tae', pagosPorAnio: 4 });
+const anual = convertirTipo({ tipo: 0.07, sentido: 'tin-a-tae', pagosPorAnio: 1 });
+const inversa = convertirTipo({ tipo: 0.03, sentido: 'tae-a-tin', pagosPorAnio: 12 });
+const tabla = [0.02, 0.03, 0.05, 0.07, 0.1, 0.2].map((tin) => ({
+  tin,
+  mensual: convertirTipo({ tipo: tin, sentido: 'tin-a-tae', pagosPorAnio: 12 }).tae,
+  trimestral: convertirTipo({ tipo: tin, sentido: 'tin-a-tae', pagosPorAnio: 4 }).tae,
+}));
+const sinCom = calcularPrestamo({ importe: 10_000, tin: 0.07, meses: 60 });
+const conCom = calcularPrestamo({ importe: 10_000, tin: 0.07, meses: 60, comisionApertura: 0.01 });
+
+const faqs = [
+  {
+    p: '¿Qué diferencia hay entre TIN y TAE?',
+    r: 'El TIN (tipo de interés nominal) es el porcentaje que se aplica para calcular los intereses. La TAE (tasa anual equivalente) expresa el coste o la rentabilidad real de un año, teniendo en cuenta la frecuencia de los pagos y, en los préstamos, las comisiones y gastos obligatorios.',
+  },
+  {
+    p: '¿Por qué la TAE es más alta que el TIN?',
+    r: `Porque cuando se paga o se cobra más de una vez al año, los intereses de cada periodo cuentan antes. Un TIN del 7 % con pagos mensuales equivale a una TAE del ${porcentaje(ej.tae, 3)}; con pagos trimestrales, del ${porcentaje(trimestral.tae, 3)}; y con un solo pago anual, TIN y TAE coinciden.`,
+  },
+  {
+    p: '¿Cuál debo mirar para comparar?',
+    r: 'La TAE. Es la cifra pensada para comparar productos con distinta frecuencia de pago y distintas comisiones. En un préstamo, mira además el importe total que devolverás.',
+  },
+  {
+    p: '¿La TAE incluye las comisiones?',
+    r: `En un préstamo, sí: incluye las comisiones y los gastos que la entidad exige para concederlo. Por eso esta conversión, que solo conoce el TIN, da la TAE «sin comisiones». Un préstamo de 10.000 € al 7 % TIN a 5 años tiene una TAE del ${porcentaje(sinCom.tae)} sin comisiones y del ${porcentaje(conCom.tae)} con un 1 % de apertura.`,
+  },
+  {
+    p: '¿Puede ser la TAE menor que el TIN?',
+    r: 'Con pagos durante el año y sin bonificaciones, no: como mínimo son iguales. Solo coinciden cuando hay un único pago anual y ningún gasto.',
+  },
+  {
+    p: '¿Cómo paso de TAE a TIN?',
+    r: `Con la fórmula inversa: TIN = n × ((1 + TAE)^(1/n) − 1). Una cuenta que anuncia un 3 % TAE y liquida cada mes aplica un TIN del ${porcentaje(inversa.tin, 3)}.`,
+  },
+  {
+    p: '¿Qué es la TAE variable?',
+    r: 'Es la TAE de un préstamo a tipo variable. Se calcula suponiendo que el índice de referencia, como el Euríbor, no cambia, así que sirve para comparar ofertas pero no predice lo que pagarás.',
+  },
+];
+---
+<Calculadora
+  slug="tin-tae"
+  titulo="Calculadora de TIN y TAE: convierte uno en otro"
+  descripcion="Convierte un TIN en TAE o una TAE en TIN según los pagos al año. Con la fórmula, un ejemplo resuelto y la diferencia entre ambos explicada."
+  revisado="2026-11-11"
+  faqs={faqs}
+  relacionadas={['prestamo-personal', 'cuota-hipoteca', 'rentabilidad-deposito', 'cuenta-remunerada']}
+  fuentes={[
+    { clave: 'bde', nota: 'definiciones de TIN y TAE para el cliente bancario.' },
+    { clave: 'boe', nota: 'Circular 5/2012 del Banco de España (norma decimotercera y anejo 7, cálculo de la TAE).' },
+  ]}
+  altoIframe={560}
+>
+  <CalculadoraTinTae slot="calc" client:load urlPublica={`${SITIO.url}/tin-tae/`} />
+
+  <h2>TIN y TAE: qué mide cada uno</h2>
+  <p>
+    El TIN es el tipo «de tarifa»: el porcentaje anual que la entidad aplica al capital para calcular los intereses de cada
+    periodo. No dice nada de cada cuánto se pagan esos intereses ni de si hay comisiones.
+  </p>
+  <p>
+    La TAE traduce todo eso a una única cifra anual comparable. Responde a la pregunta «¿cuánto me cuesta, o me renta, esto en un
+    año, contándolo todo?». Por eso la normativa obliga a las entidades a informar de ella en la publicidad y en los contratos.
+  </p>
+
+  <h2>Las fórmulas</h2>
+  <p>Sin comisiones ni gastos, la relación depende solo del número de pagos al año, n:</p>
+  <p class="formula">TAE = (1 + TIN/n)<sup>n</sup> − 1 &nbsp;&nbsp;&nbsp; TIN = n · ((1 + TAE)<sup>1/n</sup> − 1)</p>
+  <ul>
+    <li><strong>n = 12</strong> si los pagos o las liquidaciones son mensuales; 4 si son trimestrales; 2, semestrales; 1, anuales.</li>
+    <li><strong>TIN/n</strong> es el tipo que se aplica en cada periodo.</li>
+  </ul>
+  <p>
+    Cuando hay comisiones, la TAE ya no sale de una fórmula directa: es el tipo anual que iguala el dinero que recibes con el
+    valor actual de todo lo que pagas. Para ese caso usa la calculadora de préstamos, que la calcula con los flujos reales.
+  </p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>Te ofrecen un préstamo al 7 % TIN con cuotas mensuales. Son los datos con los que se abre la calculadora.</p>
+  <ol>
+    <li>Tipo de cada mes: 7 % / 12 = {porcentaje(ej.tipoPorPeriodo, 4)}.</li>
+    <li>TAE: (1 + 0,07/12)<sup>12</sup> − 1 = <strong>{porcentaje(ej.tae, 3)}</strong>.</li>
+    <li>Con pagos trimestrales sería {porcentaje(trimestral.tae, 3)}, y con un único pago anual, {porcentaje(anual.tae, 3)}.</li>
+  </ol>
+  <p>
+    Dicho en euros: 10.000 € durante un año al 7 % TIN con liquidación mensual generan {euros(10_000 * ej.tae)} de intereses,
+    no 700 €.
+  </p>
+  <p>
+    En sentido contrario: una cuenta anuncia un 3 % TAE y abona intereses cada mes. El TIN que aplica es
+    12 × ((1,03)<sup>1/12</sup> − 1) = {porcentaje(inversa.tin, 3)}.
+  </p>
+
+  <h2>Tabla de equivalencias</h2>
+  <p>
+    La distancia entre TIN y TAE crece con el tipo: es casi imperceptible en tipos bajos y notable en los altos, como los de las
+    tarjetas de crédito. Estas son las TAE que corresponden a varios TIN, sin comisiones:
+  </p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">TIN</th><th scope="col">TAE con pagos mensuales</th><th scope="col">TAE con pagos trimestrales</th></tr></thead>
+      <tbody>
+        {tabla.map((f) => <tr><td>{porcentaje(f.tin, 0)}</td><td>{porcentaje(f.mensual, 3)}</td><td>{porcentaje(f.trimestral, 3)}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Para cualquier otro valor, usa la calculadora: elige el sentido de la conversión, escribe el tipo y selecciona cuántos pagos
+    o liquidaciones hay al año.
+  </p>
+
+  <h2>En préstamos y en ahorro no significan lo mismo</h2>
+  <h3>En un préstamo o una hipoteca</h3>
+  <p>
+    La TAE incluye el TIN, la frecuencia de las cuotas, la comisión de apertura y los gastos que la entidad exige para darte el
+    préstamo, como un seguro obligatorio. No incluye gastos que pagarías igualmente a terceros, como la notaría. Dos préstamos
+    con el mismo TIN pueden tener TAE muy distintas.
+  </p>
+  <h3>En una cuenta o un depósito</h3>
+  <p>
+    La TAE refleja cada cuánto te abonan los intereses y si hay comisiones de mantenimiento. Un depósito que paga los intereses
+    cada mes tiene una TAE algo superior a la de otro con el mismo TIN que los paga al vencimiento, porque dispones antes del dinero.
+  </p>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Comparar el TIN de una oferta con la TAE de otra.</strong> Compara siempre TAE con TAE.</li>
+    <li><strong>Calcular los intereses con la TAE.</strong> La cuota de un préstamo se calcula con el TIN; la TAE es solo para comparar.</li>
+    <li><strong>Creer que la TAE lo incluye todo.</strong> No incluye productos opcionales ni gastos que no impone la entidad.</li>
+    <li><strong>Fiarse de la TAE en plazos cortos.</strong> Un coste pequeño en un préstamo de pocos meses da una TAE altísima; mira también el coste en euros.</li>
+    <li><strong>Tomar la TAE variable como una previsión.</strong> Supone que el índice de referencia no se mueve.</li>
+  </ul>
+</Calculadora>

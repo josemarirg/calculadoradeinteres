@@ -1,0 +1,16 @@
+---
+import Pagina from '../layouts/Pagina.astro';
+import { SITIO } from '../config/sitio';
+import { TITULAR } from '../config/titular';
+---
+<Pagina titulo="Contacto" descripcion={`Cómo contactar con ${SITIO.dominio}: errores en un cálculo, sugerencias o consultas.`} ruta="/contacto/" h1="Contacto" actualizado="2026-11-11">
+  <p>Escríbenos a <a href={`mailto:${TITULAR.email}`}>{TITULAR.email}</a>.</p>
+  <h2>Para qué puedes escribirnos</h2>
+  <ul>
+    <li><strong>Has encontrado un error</strong> en un cálculo o en un texto. Indícanos la calculadora y los datos que usaste, o copia el enlace del cálculo.</li>
+    <li><strong>Echas en falta una calculadora</strong> o una opción.</li>
+    <li><strong>Quieres ejercer tus derechos</strong> de protección de datos (consulta la <a href="/privacidad/">política de privacidad</a>).</li>
+  </ul>
+  <h2>Lo que no podemos hacer</h2>
+  <p>No damos asesoramiento financiero, fiscal ni legal, ni recomendamos productos para un caso concreto. Para eso, acude a un profesional autorizado o a la entidad correspondiente.</p>
+</Pagina>

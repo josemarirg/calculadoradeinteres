@@ -1,0 +1,31 @@
+---
+/**
+ * Bloque de producto afiliado. Va SIEMPRE debajo del resultado, nunca antes.
+ * Publicidad claramente identificada y condiciones literales de la entidad
+ * (Circular 2/2020 de la CNMV y Circular 4/2020 del Banco de España).
+ * Los productos con `activo: false` solo se muestran en desarrollo, como ejemplo.
+ */
+import { PRODUCTOS, type Ubicacion } from '../config/afiliados';
+import { fechaLarga } from '../lib/formato';
+
+interface Props { ubicacion: Ubicacion }
+const { ubicacion } = Astro.props;
+const productos = PRODUCTOS.filter((p) => p.ubicacion === ubicacion && (p.activo || import.meta.env.DEV));
+---
+{productos.map((p) => (
+  <aside class="producto" aria-label="Publicidad">
+    <div class="producto__cab">
+      <span class="etiqueta">Publicidad</span>
+      {!p.activo && <span class="etiqueta">Ejemplo · no se publica</span>}
+      <strong>{p.entidad} · {p.producto}</strong>
+    </div>
+    <p>{p.condiciones}</p>
+    <p class="producto__legal">{p.advertencias}</p>
+    <p><a class="boton" href={p.url} rel="sponsored nofollow noopener" target="_blank">{p.textoBoton}</a></p>
+    <p class="producto__legal">
+      Condiciones publicadas por la entidad, consultadas el {fechaLarga(p.fechaCondiciones)}; pueden haber cambiado.
+      Enlace de afiliación: si contratas a través de él podemos recibir una comisión, sin coste para ti.
+      <a href="/como-nos-financiamos/">Cómo nos financiamos</a>.
+    </p>
+  </aside>
+))}

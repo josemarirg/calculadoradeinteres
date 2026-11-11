@@ -1,0 +1,75 @@
+---
+import Pagina from '../layouts/Pagina.astro';
+import { SITIO } from '../config/sitio';
+import { TITULAR } from '../config/titular';
+---
+<Pagina titulo="Política de privacidad" descripcion={`Cómo trata los datos personales ${SITIO.dominio}, conforme al RGPD.`} ruta="/privacidad/" h1="Política de privacidad" actualizado="2026-11-11">
+  <p>Esta política explica qué datos personales se tratan en {SITIO.dominio}, conforme al Reglamento (UE) 2016/679 (RGPD) y a la Ley Orgánica 3/2018 (LOPDGDD).</p>
+
+  <h2>Responsable del tratamiento</h2>
+  <ul class="datos-titular">
+    <li><strong>Responsable:</strong> {TITULAR.nombre}</li>
+    <li><strong>NIF:</strong> {TITULAR.nif}</li>
+    <li><strong>Domicilio:</strong> {TITULAR.direccion}</li>
+    <li><strong>Contacto:</strong> <a href={`mailto:${TITULAR.email}`}>{TITULAR.email}</a></li>
+  </ul>
+  <p>No se ha designado delegado de protección de datos, al no ser obligatorio para esta actividad.</p>
+
+  <h2>Lo que no recogemos</h2>
+  <p>
+    Las calculadoras funcionan íntegramente en tu navegador. Las cifras que introduces no se envían a ningún servidor ni se
+    almacenan. El enlace para compartir un cálculo contiene únicamente esas cifras, sin ningún dato que te identifique.
+    El sitio no tiene registro de usuarios ni formularios.
+  </p>
+
+  <h2>Datos que sí se tratan</h2>
+  <h3>Si nos escribes por correo electrónico</h3>
+  <ul>
+    <li><strong>Datos:</strong> tu dirección de correo, tu nombre si lo indicas y el contenido del mensaje.</li>
+    <li><strong>Finalidad:</strong> responder a tu consulta.</li>
+    <li><strong>Base jurídica:</strong> tu consentimiento al escribirnos (art. 6.1.a RGPD). Si ejerces tus derechos de protección de datos, el cumplimiento de una obligación legal (art. 6.1.c RGPD).</li>
+    <li><strong>¿Es obligatorio?</strong> No. Escribirnos es voluntario; sin tu dirección de correo no podremos responderte.</li>
+    <li><strong>Encargado del tratamiento:</strong> el proveedor del servicio de correo electrónico, Google Ireland Limited (Gmail).</li>
+    <li><strong>Conservación:</strong> el tiempo necesario para atender la consulta y, después, un máximo de 12 meses.</li>
+  </ul>
+  <h3>Datos técnicos de navegación</h3>
+  <ul>
+    <li><strong>Datos:</strong> dirección IP y datos técnicos de la petición (navegador, página solicitada, fecha y hora).</li>
+    <li><strong>Finalidad:</strong> servir las páginas y proteger el sitio frente a usos abusivos.</li>
+    <li><strong>Base jurídica:</strong> interés legítimo en la seguridad y el funcionamiento del sitio (art. 6.1.f RGPD).</li>
+    <li><strong>Encargado del tratamiento:</strong> el proveedor de alojamiento, Cloudflare, Inc. (Estados Unidos), conforme a su acuerdo de tratamiento de datos. Las transferencias a Estados Unidos se amparan en su certificación en el Marco de Privacidad de Datos UE-EE. UU. y, cuando procede, en cláusulas contractuales tipo.</li>
+    <li><strong>Conservación:</strong> el titular no guarda estos registros; el proveedor los conserva el tiempo limitado que establece su propia política.</li>
+  </ul>
+
+  <h2>Cookies</h2>
+  <p>El uso de cookies y tecnologías similares se explica en la <a href="/cookies/">política de cookies</a>.</p>
+
+  <h2>Enlaces a terceros</h2>
+  <p>
+    Si haces clic en un enlace de afiliación llegas a la web de otra entidad, que tratará tus datos conforme a su propia política
+    de privacidad y podrá usar sus propias cookies. Si allí rellenas un formulario o solicitas un producto, el responsable de
+    esos datos es esa entidad. Nosotros no recibimos datos que permitan identificarte: solo información agregada sobre las
+    operaciones atribuidas a nuestros enlaces.
+  </p>
+
+  <h2>Decisiones automatizadas</h2>
+  <p>No se elaboran perfiles ni se toman decisiones automatizadas con tus datos.</p>
+
+  <h2>Destinatarios</h2>
+  <p>No se ceden datos a terceros, salvo obligación legal. Solo acceden a ellos los encargados del tratamiento necesarios para prestar el servicio (alojamiento y correo electrónico).</p>
+
+  <h2>Tus derechos</h2>
+  <p>
+    Puedes ejercer los derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento y portabilidad, y
+    retirar tu consentimiento en cualquier momento, escribiendo a <a href={`mailto:${TITULAR.email}`}>{TITULAR.email}</a>.
+    Ejercerlos es gratuito y recibirás respuesta en el plazo máximo de un mes.
+    Si consideras que el tratamiento no se ajusta a la normativa, puedes presentar una reclamación ante la
+    <a href="https://www.aepd.es/" rel="noopener">Agencia Española de Protección de Datos</a>.
+  </p>
+
+  <h2>Menores</h2>
+  <p>El sitio no se dirige a menores de edad ni recoge conscientemente datos suyos.</p>
+
+  <h2>Cambios en esta política</h2>
+  <p>Si la política cambia, se publicará aquí la nueva versión con su fecha.</p>
+</Pagina>
