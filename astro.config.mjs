@@ -9,8 +9,7 @@ export default defineConfig({
   build: { inlineStylesheets: 'always' },
   integrations: [
     preact(),
-    // Fuera del sitemap: versiones para iframe, la 404 y las páginas marcadas noindex.
-    // TODO(titular): quita '/inversion/' de esta lista cuando publiques su primera calculadora.
-    sitemap({ filter: (page) => !['/embed/', '/404', '/inversion/'].some((x) => page.includes(x)) }),
+    // Fuera del sitemap: versiones para iframe y la 404.
+    sitemap({ filter: (page) => !['/embed/', '/404'].some((x) => page.includes(x)) }),
   ],
 });

@@ -9,6 +9,15 @@ import CalculadoraDeposito from '../../components/calc/CalculadoraDeposito';
 import CalculadoraAnticipada from '../../components/calc/CalculadoraAnticipada';
 import CalculadoraTinTae from '../../components/calc/CalculadoraTinTae';
 import CalculadoraCuenta from '../../components/calc/CalculadoraCuenta';
+import CalculadoraLetras from '../../components/calc/CalculadoraLetras';
+import CalculadoraRevolving from '../../components/calc/CalculadoraRevolving';
+import CalculadoraDeudas from '../../components/calc/CalculadoraDeudas';
+import CalculadoraFijaVariable from '../../components/calc/CalculadoraFijaVariable';
+import CalculadoraGastosCompra from '../../components/calc/CalculadoraGastosCompra';
+import CalculadoraFondos from '../../components/calc/CalculadoraFondos';
+import CalculadoraPensiones from '../../components/calc/CalculadoraPensiones';
+import CalculadoraFire from '../../components/calc/CalculadoraFire';
+import CalculadoraIrpfAhorro from '../../components/calc/CalculadoraIrpfAhorro';
 import { FISCAL } from '../../config/fiscal';
 import { CALCULADORAS, FUENTES, SITIO } from '../../config/sitio';
 
@@ -18,6 +27,9 @@ export function getStaticPaths() {
 const { c } = Astro.props;
 const url = `${SITIO.url}/${c.slug}/`;
 const ret = FISCAL.retencionIntereses.valor;
+const tramos = FISCAL.tramosAhorro.valor;
+const compra = FISCAL.compraVivienda.valor;
+const pensiones = FISCAL.planPensiones.valor;
 ---
 <Embed titulo={c.nombre} ruta={`/${c.slug}/`} nombre={c.nombre}>
   {c.slug === 'interes-compuesto' && <CalculadoraCompuesto client:load embed retencionPorDefecto={ret} urlPublica={url} />}
@@ -28,4 +40,13 @@ const ret = FISCAL.retencionIntereses.valor;
   {c.slug === 'amortizacion-anticipada' && <CalculadoraAnticipada client:load embed urlPublica={url} />}
   {c.slug === 'tin-tae' && <CalculadoraTinTae client:load embed urlPublica={url} />}
   {c.slug === 'cuenta-remunerada' && <CalculadoraCuenta client:load embed retencionPorDefecto={ret} urlPublica={url} />}
+  {c.slug === 'letras-del-tesoro' && <CalculadoraLetras client:load embed tipoIrpf={tramos[0].tipo} urlPublica={url} />}
+  {c.slug === 'tarjeta-revolving' && <CalculadoraRevolving client:load embed urlPublica={url} />}
+  {c.slug === 'liquidar-deudas' && <CalculadoraDeudas client:load embed urlPublica={url} />}
+  {c.slug === 'hipoteca-fija-o-variable' && <CalculadoraFijaVariable client:load embed urlPublica={url} urlEuribor={FUENTES.bde.url} />}
+  {c.slug === 'gastos-compra-vivienda' && <CalculadoraGastosCompra client:load embed comunidades={compra.comunidades} iva={compra.ivaViviendaNueva} urlPublica={url} />}
+  {c.slug === 'fondos-indexados' && <CalculadoraFondos client:load embed tramos={tramos} urlPublica={url} />}
+  {c.slug === 'plan-de-pensiones' && <CalculadoraPensiones client:load embed limiteIndividual={pensiones.individual} limiteConjunto={pensiones.conjunto} urlPublica={url} />}
+  {c.slug === 'jubilacion-fire' && <CalculadoraFire client:load embed urlPublica={url} />}
+  {c.slug === 'irpf-ahorro' && <CalculadoraIrpfAhorro client:load embed tramos={tramos} retencionPorDefecto={ret} urlPublica={url} />}
 </Embed>

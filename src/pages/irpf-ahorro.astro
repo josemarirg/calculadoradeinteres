@@ -1,0 +1,157 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraIrpfAhorro from '../components/calc/CalculadoraIrpfAhorro';
+import { calcularIrpfAhorro, cuotaAhorro } from '../lib/calc/irpfahorro';
+import { euros, eurosSinCentimos, porcentaje } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora y con la escala de la configuración fiscal.
+const tramos = FISCAL.tramosAhorro.valor;
+const ret = FISCAL.retencionIntereses.valor;
+const ej = calcularIrpfAhorro({ rendimientos: 2_000, ganancias: 8_000, retenciones: 2_000 * ret, tramos });
+const t1 = tramos[0];
+const t2 = tramos[1];
+const bases = [1_000, 6_000, 10_000, 25_000, 50_000, 100_000, 300_000].map((b) => ({ b, c: cuotaAhorro(b, tramos) }));
+const pequeno = calcularIrpfAhorro({ rendimientos: 500, ganancias: 0, retenciones: 500 * ret, tramos });
+const b60 = cuotaAhorro(60_000, tramos);
+const rotulo = (k: number) => {
+  const t = tramos[k];
+  const desde = k === 0 ? 0 : tramos[k - 1].hasta!;
+  return t.hasta === null ? `Más de ${eurosSinCentimos(desde)}` : k === 0 ? `Hasta ${eurosSinCentimos(t.hasta)}` : `De ${eurosSinCentimos(desde)} a ${eurosSinCentimos(t.hasta)}`;
+};
+
+const faqs = [
+  {
+    p: '¿Cuánto se paga de IRPF por los intereses y las ganancias?',
+    r: `Entre el ${porcentaje(t1.tipo, 0)} y el ${porcentaje(tramos[tramos.length - 1].tipo, 0)}, según el importe total del año. Los primeros ${eurosSinCentimos(t1.hasta!)} tributan al ${porcentaje(t1.tipo, 0)}, y solo lo que pasa de ahí tributa a tipos más altos. Con 10.000 € de base se pagan ${euros(ej.cuota)}, un ${porcentaje(ej.tipoMedio, 1)} de media.`,
+  },
+  {
+    p: '¿Qué rentas van a la base del ahorro?',
+    r: 'Los rendimientos del capital mobiliario, como los intereses de cuentas y depósitos, los dividendos y el rendimiento de Letras y bonos, y las ganancias patrimoniales por vender fondos, acciones, inmuebles u otros bienes. Los sueldos, las pensiones y los alquileres van a la base general, con otra escala.',
+  },
+  {
+    p: 'Si paso de tramo, ¿tributo más por todo?',
+    r: `No. Cada tipo se aplica solo a la parte de la base que cae en su tramo. Con 10.000 €, los primeros ${eurosSinCentimos(t1.hasta!)} pagan el ${porcentaje(t1.tipo, 0)} y los 4.000 € restantes, el ${porcentaje(t2.tipo, 0)}.`,
+  },
+  {
+    p: '¿La retención del 19 % es todo lo que tengo que pagar?',
+    r: `No siempre. La retención es un pago a cuenta. Si tu base del ahorro supera los ${eurosSinCentimos(t1.hasta!)}, o tuviste ganancias sin retención, en la declaración saldrá una diferencia a pagar. En el ejemplo, de los ${euros(ej.cuota)} de impuesto solo ${euros(ej.retenciones)} estaban retenidos.`,
+  },
+  {
+    p: '¿Puedo compensar pérdidas con ganancias?',
+    r: 'Sí. Las pérdidas patrimoniales se restan de las ganancias del mismo año y, con límites, de los rendimientos del capital mobiliario; lo que no se pueda compensar se guarda para los cuatro años siguientes. La calculadora no hace esa compensación: introduce las ganancias ya netas de pérdidas.',
+  },
+  {
+    p: '¿Los traspasos entre fondos tributan?',
+    r: 'No. Mover dinero de un fondo de inversión a otro mediante traspaso no se considera una venta a efectos fiscales. La ganancia se difiere y tributará cuando reembolses definitivamente.',
+  },
+  {
+    p: '¿La escala es igual en toda España?',
+    r: 'En las comunidades de régimen común, sí: la base del ahorro tiene la misma escala. El País Vasco y Navarra tienen su propio IRPF, con escalas del ahorro distintas que esta calculadora no recoge.',
+  },
+];
+---
+<Calculadora
+  slug="irpf-ahorro"
+  titulo="Calculadora del IRPF del ahorro: intereses y ganancias"
+  descripcion="Calcula cuánto IRPF pagas por intereses, dividendos y ganancias de fondos o acciones con la escala del ahorro, tramo a tramo, y cuánto te queda por pagar tras las retenciones."
+  revisado="2026-11-12"
+  faqs={faqs}
+  relacionadas={['fondos-indexados', 'rentabilidad-deposito', 'letras-del-tesoro', 'cuenta-remunerada']}
+  fuentes={[
+    { clave: 'aeat', nota: 'escala de gravamen de la base liquidable del ahorro y porcentajes de retención.' },
+    { clave: 'boe', nota: 'Ley 35/2006, del Impuesto sobre la Renta de las Personas Físicas.' },
+  ]}
+  altoIframe={860}
+>
+  <CalculadoraIrpfAhorro slot="calc" client:load tramos={tramos} retencionPorDefecto={ret} urlPublica={`${SITIO.url}/irpf-ahorro/`} />
+
+  <h2>Qué es la base del ahorro</h2>
+  <p>
+    El IRPF separa tus rentas en dos bloques. La <strong>base general</strong> recoge sueldos, pensiones, actividades económicas y
+    alquileres. La <strong>base del ahorro</strong> recoge lo que rinde tu dinero: intereses, dividendos y ganancias al vender
+    inversiones. Cada bloque tiene su propia escala, y la del ahorro es más baja y más sencilla.
+  </p>
+  <p>
+    Esta calculadora aplica la escala del ahorro a la suma de tus rendimientos y ganancias del año y te dice cuánto impuesto
+    resulta, cuánto estaba ya retenido y cuál es la diferencia que aparecerá en tu declaración.
+  </p>
+
+  <h2>La escala</h2>
+  <p>Escala de la base del ahorro para el ejercicio {FISCAL.ejercicio}, suma de la parte estatal y la autonómica:</p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Base del ahorro</th><th scope="col">Tipo</th></tr></thead>
+      <tbody>
+        {tramos.map((t, k) => <tr><td>{rotulo(k)}</td><td>{porcentaje(t.tipo, 0)}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+  <p class="formula">Cuota = Σ (parte de la base en cada tramo · tipo del tramo)</p>
+  <p>
+    Es una escala progresiva por escalones: superar un límite solo cambia el tipo de los euros que quedan por encima, no el de
+    todos los anteriores.
+  </p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    En el año has cobrado 2.000 € de intereses y dividendos y has ganado 8.000 € al vender participaciones de un fondo. Son los
+    datos con los que se abre la calculadora.
+  </p>
+  <ol>
+    <li>Base del ahorro: 2.000 € + 8.000 € = {euros(ej.base)}.</li>
+    <li>Primer tramo: {eurosSinCentimos(t1.hasta!)} × {porcentaje(t1.tipo, 0)} = {euros(ej.desglose[0].cuota)}.</li>
+    <li>Segundo tramo: los {euros(ej.desglose[1].base)} restantes × {porcentaje(t2.tipo, 0)} = {euros(ej.desglose[1].cuota)}.</li>
+    <li>Impuesto: <strong>{euros(ej.cuota)}</strong>, un tipo medio del {porcentaje(ej.tipoMedio, 1)}.</li>
+    <li>Retenciones: el banco ya te retuvo el {porcentaje(ret, 0)} de los 2.000 €, es decir, {euros(ej.retenciones)}.</li>
+    <li>Diferencia a pagar en la declaración: <strong>{euros(ej.diferencia)}</strong>.</li>
+  </ol>
+  <p>
+    Si la gestora del fondo te retuvo también al reembolsar, escribe en el campo de retenciones la suma de todo lo retenido: la
+    diferencia a pagar será menor.
+  </p>
+
+  <h2>Cuánto se paga según la base</h2>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Base del ahorro</th><th scope="col">Impuesto</th><th scope="col">Tipo medio</th><th scope="col">Último tramo</th></tr></thead>
+      <tbody>
+        {bases.map((f) => <tr><td>{eurosSinCentimos(f.b)}</td><td>{euros(f.c.cuota)}</td><td>{porcentaje(f.c.cuota / f.b, 1)}</td><td>{porcentaje(f.c.marginal, 0)}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    El tipo medio siempre es menor que el del último tramo, salvo en el primero, donde coinciden. Con 60.000 € de base, por
+    ejemplo, el último euro tributa al {porcentaje(b60.marginal, 0)} pero el conjunto paga un {porcentaje(b60.cuota / 60_000, 1)}.
+  </p>
+
+  <h2>Retenciones: un pago a cuenta</h2>
+  <p>
+    Bancos y gestoras retienen el {porcentaje(ret, 0)} de los intereses, de los dividendos y de la ganancia al reembolsar un
+    fondo, y lo ingresan en Hacienda a tu nombre. Las ventas de acciones y el rendimiento de las Letras del Tesoro no llevan
+    retención. En la declaración se calcula el impuesto real con la escala y se resta lo retenido.
+  </p>
+  <p>
+    Si todo tu ahorro cabe en el primer tramo y todo llevó retención, la diferencia es cero: con 500 € de intereses, el impuesto
+    es de {euros(pequeno.cuota)} y la retención, de {euros(pequeno.retenciones)}. La diferencia aparece cuando superas el primer
+    tramo o tienes rentas sin retención.
+  </p>
+
+  <h2>Qué no incluye el cálculo</h2>
+  <ul>
+    <li><strong>La compensación de pérdidas</strong> del año o de años anteriores. Introduce las ganancias netas.</li>
+    <li><strong>El mínimo personal y familiar</strong> sobrante. Si tus rentas de la base general son muy bajas, parte del mínimo se aplica a la base del ahorro y reduce el impuesto.</li>
+    <li><strong>Reglas especiales</strong>: coeficientes de inmuebles antiguos, exenciones por reinversión en vivienda habitual o por edad, y dividendos de fuente extranjera con retención en origen.</li>
+    <li><strong>Los regímenes forales</strong> del País Vasco y Navarra.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Creer que con la retención ya está todo pagado.</strong> A partir del segundo tramo siempre queda una diferencia.</li>
+    <li><strong>Aplicar el tipo del último tramo a toda la base.</strong> Sobrestima el impuesto; la escala va por escalones.</li>
+    <li><strong>Sumar el importe de la venta en lugar de la ganancia.</strong> Solo tributa la diferencia entre lo que recibes y lo que pagaste.</li>
+    <li><strong>Olvidar las ganancias sin retención.</strong> Acciones y Letras no retienen, pero se declaran igual.</li>
+    <li><strong>No guardar dinero para la declaración.</strong> Si vendes con ganancia en diciembre, el impuesto llega en primavera.</li>
+  </ul>
+</Calculadora>

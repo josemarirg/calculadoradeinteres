@@ -1,0 +1,138 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraFijaVariable from '../components/calc/CalculadoraFijaVariable';
+import { calcularFijaVariable } from '../lib/calc/fijavariable';
+import { euros, porcentaje } from '../lib/formato';
+import { FUENTES, SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const base = { capital: 200_000, anios: 30, tinFijo: 0.03, diferencial: 0.007 };
+const ej = calcularFijaVariable(base);
+const e2 = ej.escenarios[2];
+const e4 = ej.escenarios[4];
+const mas = (n: number) => `${n >= 0 ? '+' : '−'}${euros(Math.abs(n))}`;
+
+const faqs = [
+  {
+    p: '¿Qué es mejor, hipoteca fija o variable?',
+    r: `Depende de cómo evolucione el Euríbor, que nadie conoce de antemano, y de cuánto riesgo puedas asumir. Lo que sí se puede calcular es el punto de equilibrio: con una fija al 3 % y una variable a Euríbor + 0,7 %, la variable sale mejor mientras el Euríbor medio de toda la vida del préstamo esté por debajo del ${porcentaje(ej.euriborEquilibrio)}.`,
+  },
+  {
+    p: '¿Cómo se calcula el Euríbor de equilibrio?',
+    r: 'Restando el diferencial de la variable al TIN de la fija. Es el Euríbor con el que las dos hipotecas tendrían exactamente el mismo tipo de interés y, por tanto, la misma cuota.',
+  },
+  {
+    p: '¿Cuánto sube la cuota de una variable si sube el Euríbor?',
+    r: `Para 200.000 € a 30 años con un diferencial del 0,7 %, la cuota es de ${euros(e2.cuota)} con el Euríbor al 2 % y de ${euros(e4.cuota)} con el Euríbor al 4 %: ${euros(e4.cuota - e2.cuota)} más al mes.`,
+  },
+  {
+    p: '¿Qué es una hipoteca mixta?',
+    r: 'La que tiene un primer periodo a tipo fijo, de varios años, y después pasa a tipo variable. Para compararla, calcula por separado el tramo fijo y el variable: la calculadora de cuota de hipoteca te sirve para cada tramo.',
+  },
+  {
+    p: '¿Puedo cambiar de variable a fija más adelante?',
+    r: 'Sí, por novación con tu banco o por subrogación a otra entidad. La Ley 5/2019 limita la comisión que pueden cobrarte por ese cambio. Aun así, el tipo fijo que te ofrezcan será el de ese momento, no el de hoy.',
+  },
+  {
+    p: '¿Por qué la calculadora no trae un Euríbor por defecto?',
+    r: 'Porque cambia cada mes y un valor desactualizado llevaría a error. Consulta el valor oficial en el Banco de España y pruébalo, junto con otros más altos y más bajos, en el campo opcional.',
+  },
+  {
+    p: '¿Se tienen en cuenta las bonificaciones?',
+    r: 'No. Si el tipo que te ofrecen está bonificado por contratar seguros, domiciliar la nómina u otros productos, introduce el tipo bonificado solo si vas a cumplir las condiciones, y recuerda que esos productos tienen un coste que aquí no aparece.',
+  },
+];
+---
+<Calculadora
+  slug="hipoteca-fija-o-variable"
+  titulo="Hipoteca fija o variable: calculadora comparativa"
+  descripcion="Compara una hipoteca fija con una variable: cuota, intereses totales y el Euríbor a partir del cual sale mejor la fija. Con escenarios del 0 % al 5 %."
+  revisado="2026-11-12"
+  faqs={faqs}
+  relacionadas={['cuota-hipoteca', 'amortizacion-anticipada', 'gastos-compra-vivienda', 'tin-tae']}
+  fuentes={[
+    { clave: 'bde', nota: 'Euríbor y tipos de referencia oficiales; guía de acceso al préstamo hipotecario.' },
+    { clave: 'boe', nota: 'Ley 5/2019, reguladora de los contratos de crédito inmobiliario.' },
+  ]}
+  altoIframe={900}
+>
+  <CalculadoraFijaVariable slot="calc" client:load urlPublica={`${SITIO.url}/hipoteca-fija-o-variable/`} urlEuribor={FUENTES.bde.url} />
+
+  <h2>Qué compara esta calculadora</h2>
+  <p>
+    Una hipoteca fija tiene el mismo tipo de interés, y por tanto la misma cuota, de principio a fin. Una variable paga el
+    Euríbor más un diferencial, y su cuota se recalcula en cada revisión, cada 6 o 12 meses según el contrato. La fija suele
+    partir de un tipo algo más alto: es el precio de saber lo que vas a pagar.
+  </p>
+  <p>
+    Como nadie sabe cuánto valdrá el Euríbor dentro de diez o veinte años, la calculadora no intenta adivinarlo. Hace la pregunta
+    al revés: <strong>¿cuánto tendría que valer, de media, para que una y otra costaran lo mismo?</strong> Con esa cifra delante,
+    la decisión es tuya: si crees que el Euríbor estará la mayor parte del tiempo por debajo, la variable tiene ventaja; si
+    crees que estará por encima, o no puedes permitirte que la cuota suba, la tiene la fija.
+  </p>
+
+  <h2>La fórmula</h2>
+  <p class="formula">Euríbor de equilibrio = TIN fijo − diferencial</p>
+  <p>Las cuotas de las dos hipotecas se calculan con el sistema francés, igual que en el resto de calculadoras de hipoteca:</p>
+  <p class="formula">Cuota = C · i / (1 − (1 + i)<sup>−N</sup>)</p>
+  <ul>
+    <li><strong>C</strong>: importe de la hipoteca.</li>
+    <li><strong>i</strong>: tipo mensual. En la fija, TIN / 12; en la variable, (Euríbor + diferencial) / 12.</li>
+    <li><strong>N</strong>: número de cuotas (años × 12).</li>
+  </ul>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Necesitas 200.000 € a 30 años. Te ofrecen una fija al 3 % TIN y una variable a Euríbor + 0,7 %. Son tipos de ejemplo y los
+    datos con los que se abre la calculadora.
+  </p>
+  <ol>
+    <li>Fija: cuota de <strong>{euros(ej.fija.cuota)}</strong> durante 360 meses. Intereses totales: {euros(ej.fija.intereses)}.</li>
+    <li>Euríbor de equilibrio: 3 % − 0,7 % = <strong>{porcentaje(ej.euriborEquilibrio)}</strong>.</li>
+    <li>Con el Euríbor al 2 %, la variable aplicaría un {porcentaje(e2.tin)}: cuota de {euros(e2.cuota)}, {euros(-e2.difCuota)} menos al mes que la fija.</li>
+    <li>Con el Euríbor al 4 %, aplicaría un {porcentaje(e4.tin)}: cuota de {euros(e4.cuota)}, {euros(e4.difCuota)} más al mes.</li>
+  </ol>
+
+  <h2>La variable en distintos escenarios</h2>
+  <p>La misma hipoteca variable, suponiendo que el Euríbor se mantuviera en cada valor durante los 30 años:</p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Euríbor</th><th scope="col">Cuota de la variable</th><th scope="col">Frente a la fija, al mes</th><th scope="col">Frente a la fija, en intereses</th></tr></thead>
+      <tbody>
+        {ej.escenarios.map((x) => <tr><td>{porcentaje(x.euribor, 0)}</td><td>{euros(x.cuota)}</td><td>{mas(x.difCuota)}</td><td>{mas(x.difIntereses)}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    La tabla enseña algo que el punto de equilibrio no dice: el riesgo no es simétrico en tu presupuesto. Fíjate en la cuota del
+    peor escenario que consideres razonable y pregúntate si podrías pagarla sin apuros.
+  </p>
+
+  <h2>Los límites del cálculo</h2>
+  <p>
+    El resultado supone un Euríbor constante durante todo el plazo. En la realidad sube y baja, y el orden importa: los primeros
+    años son los que más pesan, porque es cuando más capital debes. Un Euríbor alto al principio y bajo al final cuesta más que
+    lo contrario, aunque la media sea la misma. Tómalo como una referencia, no como una previsión.
+  </p>
+  <p>
+    Tampoco se incluyen la comisión de apertura, los productos vinculados ni los gastos de cambiar de hipoteca más adelante. Para
+    comparar ofertas reales, pide a cada entidad la ficha de información y compara las TAE y el coste total.
+  </p>
+
+  <h2>Cómo decidir</h2>
+  <ul>
+    <li><strong>Mira tu margen.</strong> Si una subida de la cuota como la del peor escenario te pondría en apuros, la fija te protege.</li>
+    <li><strong>Mira el plazo.</strong> Cuanto más largo, más tiempo estás expuesto a los cambios del Euríbor.</li>
+    <li><strong>Mira la diferencia de partida.</strong> Si el equilibrio queda muy por debajo del Euríbor actual, la variable empieza perdiendo.</li>
+    <li><strong>Piensa si amortizarás antes.</strong> Si esperas devolver la hipoteca en pocos años, el riesgo de la variable dura menos.</li>
+    <li><strong>Considera la mixta</strong> si quieres certeza en los primeros años, que son los de más carga.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Comparar con el Euríbor de hoy y nada más.</strong> La hipoteca dura décadas; el dato de hoy solo vale para la primera revisión.</li>
+    <li><strong>Comparar el tipo bonificado de una con el tipo sin bonificar de la otra.</strong> Compara en las mismas condiciones.</li>
+    <li><strong>Olvidar el periodo inicial.</strong> Muchas variables tienen un tipo fijo el primer año, distinto del que vendrá después.</li>
+    <li><strong>Elegir solo por la cuota inicial.</strong> La más baja hoy puede no serlo dentro de unos años.</li>
+  </ul>
+</Calculadora>

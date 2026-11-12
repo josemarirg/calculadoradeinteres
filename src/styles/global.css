@@ -141,6 +141,15 @@ a:hover { text-decoration-thickness: 2px; }
 .campo__error { color: var(--error); font-size: 0.8125rem; margin: 0.25rem 0 0; }
 .campo__ayuda { color: var(--texto-suave); font-size: 0.8125rem; margin: 0.25rem 0 0; }
 .campo--ancho { grid-column: 1 / -1; }
+.calc__campos--3 { grid-template-columns: 1.25fr 0.9fr 1fr; gap: 0.6rem 0.5rem; }
+.calc__campos--3 input { padding-left: 0.6rem; padding-right: 1.6rem; }
+.calc__campos--3 .campo__sufijo { right: 0.55rem; }
+.deuda { border: 0; padding: 0; margin: 0 0 0.6rem; min-width: 0; }
+.deuda legend { padding: 0; font-size: 0.8125rem; font-weight: 600; margin-bottom: 0.2rem; }
+.calc__nota { grid-column: 1 / -1; color: var(--texto-suave); font-size: 0.8125rem; margin: 0; }
+.calc__mas { margin: 0 0 0.6rem; }
+.boton-texto { font: inherit; font-size: 0.875rem; font-weight: 600; color: var(--texto); background: none; border: 0; padding: 0.35rem 0; min-height: 2rem; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.lista-orden { margin: 0.75rem 0 0; padding-left: 1.25rem; font-size: 0.9375rem; }
 
 /* Desplegables: una línea fina y un signo, sin cajas. */
 .desplegable { border-top: 1px solid var(--borde); margin-top: 0.75rem; }

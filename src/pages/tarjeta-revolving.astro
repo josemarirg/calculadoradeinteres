@@ -1,0 +1,142 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraRevolving from '../components/calc/CalculadoraRevolving';
+import { calcularRevolving, type EntradaRevolving } from '../lib/calc/revolving';
+import { duracion } from '../components/calc/ui';
+import { euros, porcentaje } from '../lib/formato';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const base: EntradaRevolving = { saldo: 3_000, tipo: 0.2, claseTipo: 'TIN', cuota: 75 };
+const ej = calcularRevolving(base);
+const doble = calcularRevolving({ ...base, cuota: 150 });
+const justa = calcularRevolving({ ...base, cuota: 60 });
+const f1 = ej.cuadro[0];
+const f12 = ej.cuadro[11];
+const a24 = ej.alternativas[1];
+const pctIntereses = Math.round((ej.interesPrimerMes / 75) * 100);
+
+const faqs = [
+  {
+    p: '¿Qué es una tarjeta revolving?',
+    r: 'Es una tarjeta de crédito en la que no devuelves cada mes todo lo gastado, sino una cuota fija o un porcentaje de la deuda. El resto se aplaza y genera intereses. El crédito disponible se recupera a medida que pagas, de ahí el nombre.',
+  },
+  {
+    p: '¿Por qué mi deuda casi no baja?',
+    r: `Porque la cuota paga primero los intereses, y con tipos altos se llevan casi todo. Con 3.000 € al 20 % TIN y una cuota de 75 €, el primer mes ${euros(ej.interesPrimerMes)} son intereses y solo ${euros(ej.amortizacionPrimerMes)} reducen la deuda.`,
+  },
+  {
+    p: '¿Cuánto tardaré en pagar mi tarjeta revolving?',
+    r: `Depende de la deuda, el tipo y la cuota. En el ejemplo, 3.000 € al 20 % TIN pagando 75 € al mes tardan ${duracion(ej.meses)} en liquidarse y cuestan ${euros(ej.totalIntereses)} de intereses, siempre que no hagas compras nuevas.`,
+  },
+  {
+    p: '¿Qué pasa si la cuota no cubre los intereses?',
+    r: 'La deuda no baja nunca, o incluso crece si la entidad suma los intereses impagados. La calculadora te avisa cuando la cuota es igual o inferior a los intereses del primer mes y te dice cuánto son.',
+  },
+  {
+    p: '¿Cómo pago menos intereses?',
+    r: `Subiendo la cuota. Pasar de 75 € a 150 € al mes en el ejemplo reduce el plazo a ${duracion(doble.meses)} y los intereses a ${euros(doble.totalIntereses)}. También ayuda dejar de usar la tarjeta mientras la pagas y hacer amortizaciones extra cuando puedas.`,
+  },
+  {
+    p: '¿Puedo cambiar la forma de pago de la tarjeta?',
+    r: 'Normalmente sí: la mayoría de las tarjetas permiten elegir entre pago aplazado y pago total a fin de mes, y cambiar el importe de la cuota. Consulta las condiciones de tu contrato o pregunta a la entidad.',
+  },
+  {
+    p: '¿Cuándo es usurario el interés de una tarjeta revolving?',
+    r: 'Desde 2023, el Tribunal Supremo considera que el interés de una tarjeta revolving es notablemente superior al normal del dinero cuando supera en más de seis puntos porcentuales el tipo medio de las tarjetas de crédito y revolving que publica el Banco de España. Cada caso lo valora un juez: si crees que es el tuyo, consulta con un profesional o una asociación de consumidores.',
+  },
+];
+---
+<Calculadora
+  slug="tarjeta-revolving"
+  titulo="Calculadora de tarjeta revolving: plazo e intereses"
+  descripcion="Calcula cuánto tardarás en pagar tu tarjeta revolving y cuántos intereses te costará con tu cuota actual. Compara con cuotas más altas y consulta el cuadro de pagos."
+  revisado="2026-11-12"
+  faqs={faqs}
+  relacionadas={['liquidar-deudas', 'prestamo-personal', 'tin-tae', 'interes-compuesto']}
+  fuentes={[
+    { clave: 'bde', nota: 'funcionamiento de las tarjetas revolving y tipos de interés medios.' },
+    { clave: 'boe', nota: 'Orden ETD/699/2020, de regulación del crédito revolvente.' },
+  ]}
+  altoIframe={860}
+>
+  <CalculadoraRevolving slot="calc" client:load urlPublica={`${SITIO.url}/tarjeta-revolving/`} />
+
+  <h2>Cómo funciona una tarjeta revolving</h2>
+  <p>
+    En una tarjeta de crédito normal pagas a fin de mes todo lo que has gastado, sin intereses. En una revolving pagas una cuota,
+    casi siempre pequeña, y el resto de la deuda se queda aplazado generando intereses a un tipo alto. Cada mes, la cuota se
+    reparte en dos: primero se cobran los intereses del saldo pendiente y lo que sobra reduce la deuda.
+  </p>
+  <p>
+    El problema está en esa segunda parte. Si la cuota es baja, casi todo se va en intereses y la deuda apenas se mueve. Y si
+    además sigues comprando con la tarjeta, puede no bajar nunca.
+  </p>
+
+  <h2>La fórmula</h2>
+  <p>Con una cuota fija y sin compras nuevas, el número de meses que tardas en liquidar la deuda es:</p>
+  <p class="formula">Meses = −ln(1 − D · i / C) / ln(1 + i)</p>
+  <ul>
+    <li><strong>D</strong>: deuda pendiente.</li>
+    <li><strong>i</strong>: tipo de interés mensual, TIN / 12 en tanto por uno.</li>
+    <li><strong>C</strong>: cuota mensual.</li>
+  </ul>
+  <p>
+    La fórmula solo tiene solución si la cuota supera los intereses del primer mes, D · i. Si no, la deuda no se paga nunca. La
+    calculadora, además de aplicar la fórmula, simula todos los pagos uno a uno para darte el cuadro completo: la última cuota
+    suele ser menor que las demás.
+  </p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Debes 3.000 € en una tarjeta al 20 % TIN y pagas 75 € al mes. El 20 % es un tipo de ejemplo: mira el de tu contrato. Son
+    los datos con los que se abre la calculadora.
+  </p>
+  <ol>
+    <li>Tipo mensual: 20 % / 12 = 1,6667 %. Equivale a una TAE del {porcentaje(ej.tae)}.</li>
+    <li>Intereses del primer mes: 3.000 € × 1,6667 % = {euros(f1.intereses)}. De los 75 €, solo {euros(f1.amortizacion)} reducen la deuda.</li>
+    <li>Al cabo de un año has pagado 900 € y todavía debes {euros(f12.saldo)}.</li>
+    <li>Plazo total: <strong>{duracion(ej.meses)}</strong> ({ej.meses} cuotas).</li>
+    <li>Intereses totales: <strong>{euros(ej.totalIntereses)}</strong>. Devuelves {euros(ej.totalPagado)} por 3.000 €.</li>
+  </ol>
+  <p>
+    En la primera cuota, el {pctIntereses} % son intereses. Ese porcentaje baja muy despacio al principio, y por eso estas deudas
+    se alargan tanto.
+  </p>
+
+  <h2>El efecto de subir la cuota</h2>
+  <p>La misma deuda de 3.000 € al 20 % TIN, con tres cuotas distintas:</p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Cuota mensual</th><th scope="col">Plazo</th><th scope="col">Intereses</th></tr></thead>
+      <tbody>
+        <tr><td>60 €</td><td>{duracion(justa.meses)}</td><td>{euros(justa.totalIntereses)}</td></tr>
+        <tr><td>75 €</td><td>{duracion(ej.meses)}</td><td>{euros(ej.totalIntereses)}</td></tr>
+        <tr><td>150 €</td><td>{duracion(doble.meses)}</td><td>{euros(doble.totalIntereses)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Con 60 € al mes, apenas 10 € por encima de los intereses, pagas más de intereses que de deuda. Doblar la cuota de 75 € a
+    150 € ahorra {euros(ej.totalIntereses - doble.totalIntereses)}. La calculadora muestra además qué cuota necesitas para
+    acabar en un plazo concreto: para liquidar el ejemplo en dos años hacen falta {euros(a24.cuota)} al mes.
+  </p>
+
+  <h2>Qué puedes hacer si tienes una</h2>
+  <ul>
+    <li><strong>Deja de usarla</strong> mientras la pagas. Cada compra nueva alarga el plazo.</li>
+    <li><strong>Sube la cuota</strong> todo lo que te permita tu presupuesto, o cambia a pago total a fin de mes para las compras nuevas.</li>
+    <li><strong>Amortiza de golpe</strong> cuando tengas un ingreso extra: todo lo que amortizas deja de generar intereses al tipo de la tarjeta.</li>
+    <li><strong>Compara con un préstamo personal.</strong> Si te lo conceden a un tipo claramente menor, refinanciar la deuda puede abaratarla. Compara por TAE y cuenta las comisiones.</li>
+    <li><strong>Revisa tu contrato.</strong> Si el tipo es muy superior al habitual de estas tarjetas, infórmate sobre tus opciones.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Mirar solo la cuota.</strong> Una cuota cómoda es justo lo que hace cara esta deuda.</li>
+    <li><strong>No saber qué tipo pagas.</strong> Aparece en el contrato y en cada extracto, como TIN y como TAE.</li>
+    <li><strong>Olvidar los seguros y comisiones.</strong> Un seguro de protección de pagos se cobra aparte y la calculadora no lo incluye.</li>
+    <li><strong>Pagar el mínimo durante años.</strong> Con el pago mínimo, el coste total puede superar la deuda inicial.</li>
+    <li><strong>Seguir comprando.</strong> El resultado de esta calculadora supone que no añades deuda nueva.</li>
+  </ul>
+</Calculadora>

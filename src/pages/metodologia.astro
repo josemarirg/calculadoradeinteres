@@ -5,6 +5,16 @@ import { calcularDeposito } from '../lib/calc/deposito';
 import { calcularHipoteca, simularAmortizacionAnticipada } from '../lib/calc/hipoteca';
 import { calcularPrestamo } from '../lib/calc/prestamo';
 import { calcularSimple } from '../lib/calc/simple';
+import { calcularDeudas } from '../lib/calc/deudas';
+import { calcularFijaVariable } from '../lib/calc/fijavariable';
+import { calcularFire } from '../lib/calc/fire';
+import { calcularFondos } from '../lib/calc/fondos';
+import { calcularGastosCompra } from '../lib/calc/gastoscompra';
+import { calcularIrpfAhorro } from '../lib/calc/irpfahorro';
+import { calcularLetras, tipoDesdePrecio } from '../lib/calc/letras';
+import { calcularPensiones } from '../lib/calc/pensiones';
+import { calcularRevolving } from '../lib/calc/revolving';
+import { duracion } from '../components/calc/ui';
 import { euros, fechaLarga, numero, porcentaje } from '../lib/formato';
 import { FISCAL } from '../config/fiscal';
 import { FUENTES, SITIO } from '../config/sitio';
@@ -18,6 +28,17 @@ const prestamoCom = calcularPrestamo({ importe: 10_000, tin: 0.07, meses: 60, co
 const hipoteca = calcularHipoteca({ precio: 250_000, ahorro: 50_000, anios: 30, modalidad: 'fija', tin: 0.03 });
 const plazo = simularAmortizacionAnticipada({ capital: 200_000, tin: 0.03, meses: 360, importe: 20_000, trasCuota: 60, modo: 'plazo' });
 const deposito = calcularDeposito({ importe: 10_000, tipo: 0.03, claseTipo: 'TAE', plazo: 6, unidad: 'meses', retencion: ret });
+const tramos = FISCAL.tramosAhorro.valor;
+const letras = calcularLetras({ nominal: 10_000, dias: 364, modo: 'tipo', tipo: 0.02 });
+const letrasBoe = tipoDesdePrecio(98.343, 266);
+const revolving = calcularRevolving({ saldo: 3_000, tipo: 0.2, claseTipo: 'TIN', cuota: 75 });
+const deudas = calcularDeudas({ deudas: [{ saldo: 6_000, tin: 0.2, cuota: 150 }, { saldo: 2_000, tin: 0.07, cuota: 60 }], extra: 100, metodo: 'avalancha' });
+const fijaVar = calcularFijaVariable({ capital: 200_000, anios: 30, tinFijo: 0.03, diferencial: 0.007 });
+const gastos = calcularGastosCompra({ precio: 200_000, vivienda: 'usada', tipoImpuesto: 0.07, gastosFijos: 1_500, entrada: 0.2 });
+const fondos = calcularFondos({ capitalInicial: 10_000, aportacionMensual: 200, anios: 20, rentabilidad: 0.06, comision: 0.002, tramos });
+const pensiones = calcularPensiones({ aportacionAnual: 1_500, anios: 25, rentabilidad: 0.04, comision: 0.01, tipoMarginal: 0.3, tipoRescate: 0.2, limiteAportacion: FISCAL.planPensiones.valor.conjunto });
+const fire = calcularFire({ gastoAnual: 24_000, tasaRetirada: 0.04, patrimonio: 50_000, ahorroMensual: 1_000, rentabilidadReal: 0.04 });
+const irpf = calcularIrpfAhorro({ rendimientos: 2_000, ganancias: 8_000, retenciones: 380, tramos });
 ---
 <Pagina titulo="Metodología" descripcion={`Fórmulas, supuestos y comprobaciones de las calculadoras de ${SITIO.dominio}.`} ruta="/metodologia/" h1="Metodología" actualizado="2026-11-11">
   <p>Esta página reúne las fórmulas que usan las calculadoras, los supuestos que hacen y cómo se comprueban. El objetivo es que cualquiera pueda reproducir un resultado con una hoja de cálculo.</p>
@@ -76,6 +97,61 @@ const deposito = calcularDeposito({ importe: 10_000, tipo: 0.03, claseTipo: 'TAE
   <p class="formula">Interés del mes = min(Saldo, Límite) · TIN / 12</p>
   <p>Liquidación mensual con retención en cada abono; el interés neto se suma al saldo. Con TAE, el tipo mensual es (1 + TAE)<sup>1/12</sup> − 1.</p>
 
+  <h3><a href="/letras-del-tesoro/">Letras del Tesoro</a></h3>
+  <p class="formula">Precio = 100 / (1 + i · d/360)</p>
+  <p>
+    Interés simple con año de 360 días, la convención del Tesoro para plazos de hasta 376 días. Comprobaciones: 10.000 € nominales
+    a 364 días al 2 % cuestan {euros(letras.importeInvertido)}; y con el precio de 98,343 a 266 días de la subasta publicada en el
+    BOE-A-2025-5905 sale un tipo del {porcentaje(letrasBoe, 3)}, frente al 2,281 % oficial.
+  </p>
+  <h3><a href="/tarjeta-revolving/">Tarjeta revolving</a></h3>
+  <p class="formula">Meses = −ln(1 − D · i / C) / ln(1 + i), con i = TIN / 12</p>
+  <p>
+    Además se simula cuota a cuota: cada mes se pagan los intereses del saldo y el resto reduce la deuda. Comprobación: 3.000 € al
+    20 % TIN con 75 € al mes se liquidan en {revolving.meses} cuotas, con {euros(revolving.totalIntereses)} de intereses.
+  </p>
+  <h3><a href="/liquidar-deudas/">Liquidar deudas</a></h3>
+  <p>
+    Simulación mes a mes: se suman los intereses de cada deuda (saldo × TIN / 12), se pagan todas las cuotas y el extra, junto con
+    las cuotas de las deudas ya liquidadas, va a la de mayor tipo (avalancha) o a la de menor saldo (bola de nieve). Comprobación:
+    6.000 € al 20 % con 150 € de cuota y 2.000 € al 7 % con 60 €, más 100 € extra, quedan liquidadas en {duracion(deudas.avalancha.meses)}
+    con {euros(deudas.avalancha.intereses)} de intereses por avalancha y en {duracion(deudas.bola.meses)} con {euros(deudas.bola.intereses)} por bola de nieve.
+  </p>
+  <h3><a href="/hipoteca-fija-o-variable/">Hipoteca fija o variable</a></h3>
+  <p class="formula">Euríbor de equilibrio = TIN fijo − diferencial</p>
+  <p>
+    Las dos cuotas se calculan con el sistema francés y un Euríbor constante. Comprobación: 200.000 € a 30 años, fija al 3 % frente a
+    Euríbor + 0,7 %: cuota fija de {euros(fijaVar.fija.cuota)} y equilibrio en el {porcentaje(fijaVar.euriborEquilibrio)}.
+  </p>
+  <h3><a href="/gastos-compra-vivienda/">Gastos de compra de una vivienda</a></h3>
+  <p class="formula">Gastos = Precio · tipo del impuesto + notaría, registro y gestoría</p>
+  <p>
+    En vivienda nueva el impuesto es el IVA más el AJD; en la de segunda mano, el ITP. Los tipos por comunidad son un punto de partida
+    editable. Comprobación: 200.000 € al 7 % de ITP con 1.500 € de gastos fijos suman {euros(gastos.totalGastos)}.
+  </p>
+  <h3><a href="/fondos-indexados/">Fondos indexados</a></h3>
+  <p class="formula">Crecimiento anual neto = (1 + rentabilidad) · (1 − comisiones) − 1</p>
+  <p>
+    Simulación mensual con la aportación al final de cada mes. El impuesto se calcula con la escala del ahorro sobre la ganancia,
+    suponiendo un único reembolso. Comprobación: 10.000 € más 200 € al mes, 20 años al 6 % con un 0,2 % de comisiones, dan
+    {euros(fondos.valorFinal)}, y {euros(fondos.valorNeto)} tras impuestos.
+  </p>
+  <h3><a href="/plan-de-pensiones/">Plan de pensiones</a></h3>
+  <p class="formula">Capital = A · ((1 + g)<sup>n</sup> − 1) / g &nbsp;&nbsp; Ahorro fiscal = A · tipo marginal</p>
+  <p>
+    Aportación al final de cada año; el rescate tributa entero al tipo medio indicado. Comprobación: 1.500 € al año, 25 años al 4 % con
+    un 1 % de comisiones, acumulan {euros(pensiones.capitalFinal)}, con {euros(pensiones.ahorroFiscalTotal)} de ahorro fiscal a un tipo marginal del 30 %.
+  </p>
+  <h3><a href="/jubilacion-fire/">Jubilación y FIRE</a></h3>
+  <p class="formula">Patrimonio necesario = Gasto anual / tasa de retirada</p>
+  <p>
+    El plazo se simula mes a mes con la rentabilidad real y el ahorro mensual. Comprobación: 24.000 € de gasto al 4 % exigen
+    {euros(fire.objetivo)}; desde 50.000 € y con 1.000 € al mes al 4 % real se alcanzan en {duracion(fire.meses ?? 0)}.
+  </p>
+  <h3><a href="/irpf-ahorro/">IRPF del ahorro</a></h3>
+  <p class="formula">Cuota = Σ (parte de la base en cada tramo · tipo del tramo)</p>
+  <p>Comprobación: una base de 10.000 € paga {euros(irpf.cuota)}, un tipo medio del {porcentaje(irpf.tipoMedio, 1)}.</p>
+
   <h2>Supuestos que conviene conocer</h2>
   <ul>
     <li>El tipo de interés se mantiene constante durante todo el plazo, también en la hipoteca variable.</li>
@@ -83,12 +159,16 @@ const deposito = calcularDeposito({ importe: 10_000, tipo: 0.03, claseTipo: 'TAE
     <li>Los pagos de préstamos e hipotecas son mensuales y vencidos.</li>
     <li>Los depósitos pagan los intereses al vencimiento y no se cancelan antes.</li>
     <li>No se incluyen gastos que la calculadora no pregunta: seguros, tasación, impuestos de la compraventa o comisiones distintas de la de apertura.</li>
+    <li>Las proyecciones de inversión (fondos, planes de pensiones, FIRE) aplican una rentabilidad constante: son escenarios, no previsiones.</li>
+    <li>En tarjetas y planes de deudas no se añade deuda nueva durante el plan.</li>
   </ul>
 
   <h2>Parámetros fiscales</h2>
   <p>
     Las calculadoras que muestran importes netos aplican por defecto una retención del {numero(ret * 100)} % sobre los intereses,
-    que puedes cambiar. Es un pago a cuenta del IRPF, no el impuesto definitivo. Última revisión de los parámetros fiscales:
+    que puedes cambiar. Es un pago a cuenta del IRPF, no el impuesto definitivo. La escala del ahorro, los límites de los planes
+    de pensiones y los tipos generales del ITP y del AJD de cada comunidad viven en un único archivo de configuración y son
+    editables en la calculadora cuando dependen de tu caso. Última revisión de los parámetros fiscales:
     {fechaLarga(FISCAL.ultimaRevision)}. Fuente: <a href={FUENTES.aeat.url} rel="noopener">{FUENTES.aeat.nombre}</a>.
   </p>
 

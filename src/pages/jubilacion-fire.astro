@@ -1,0 +1,150 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraFire from '../components/calc/CalculadoraFire';
+import { calcularFire, type EntradaFire } from '../lib/calc/fire';
+import { duracion } from '../components/calc/ui';
+import { euros, porcentaje } from '../lib/formato';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const base: EntradaFire = { gastoAnual: 24_000, tasaRetirada: 0.04, patrimonio: 50_000, ahorroMensual: 1_000, rentabilidadReal: 0.04 };
+const ej = calcularFire(base);
+const tasa3 = calcularFire({ ...base, tasaRetirada: 0.03 });
+const tasa35 = calcularFire({ ...base, tasaRetirada: 0.035 });
+const ahorro1500 = calcularFire({ ...base, ahorroMensual: 1_500 });
+const gasto18 = calcularFire({ ...base, gastoAnual: 18_000 });
+const rent2 = calcularFire({ ...base, rentabilidadReal: 0.02 });
+const conPension = calcularFire({ ...base, gastoAnual: 24_000 - 12_000 });
+const plazo = (m: number | null) => (m === null ? 'no se alcanza' : duracion(m));
+const anios = (m: number | null) => (m === null ? '—' : `${Math.round((m / 12) * 10) / 10}`.replace('.', ','));
+
+const faqs = [
+  {
+    p: '¿Qué es FIRE?',
+    r: 'Son las siglas en inglés de «independencia financiera, jubilación anticipada». La idea es ahorrar e invertir una parte alta de los ingresos hasta reunir un patrimonio cuyas rentas cubran tus gastos, de modo que trabajar pase a ser opcional.',
+  },
+  {
+    p: '¿Cuánto dinero necesito para vivir de mis inversiones?',
+    r: `Con la regla del 4 %, 25 veces tu gasto anual. Para gastar 24.000 € al año hacen falta ${euros(ej.objetivo)}. Con una tasa de retirada del 3 %, más prudente, ${euros(tasa3.objetivo)}.`,
+  },
+  {
+    p: '¿Qué es la regla del 4 %?',
+    r: 'Es una regla orientativa que nace de estudios de los años noventa con datos históricos de los mercados de Estados Unidos entre 1925 y 1995, el más conocido de ellos el llamado estudio Trinity (1998): una cartera de acciones y bonos habría resistido, en casi todos los periodos de 30 años analizados, retiradas anuales del 4 % del patrimonio inicial, actualizadas con la inflación. No es una garantía y no se diseñó para jubilaciones de 40 o 50 años.',
+  },
+  {
+    p: '¿Cuánto tardaré en alcanzar la independencia financiera?',
+    r: `Depende de cuánto ahorres, de lo que ya tengas y de la rentabilidad. En el ejemplo, con 50.000 € invertidos, 1.000 € de ahorro al mes y un 4 % de rentabilidad sobre la inflación, se tarda ${plazo(ej.meses)}. Ahorrando 1.500 € al mes, ${plazo(ahorro1500.meses)}.`,
+  },
+  {
+    p: '¿Por qué se usa la rentabilidad descontando la inflación?',
+    r: 'Para que todas las cifras estén en euros de hoy. Si tus gastos son de 24.000 € ahora, dentro de 20 años necesitarás más euros para comprar lo mismo. Al usar la rentabilidad real, el objetivo y el patrimonio se expresan en poder de compra actual y son comparables.',
+  },
+  {
+    p: '¿Tengo que contar la pensión pública?',
+    r: `Si esperas cobrarla, puedes restarla del gasto que quieres cubrir. Con una pensión de 12.000 € al año, el patrimonio necesario para completar hasta 24.000 € baja a ${euros(conPension.objetivo)}. Ten en cuenta que, si te retiras antes, no la cobrarás hasta la edad de jubilación y su importe dependerá de lo cotizado.`,
+  },
+  {
+    p: '¿Se tienen en cuenta los impuestos?',
+    r: 'No. Al vender participaciones para vivir de ellas pagarás IRPF por la ganancia, así que el gasto que introduces debería incluir un margen para impuestos. Puedes estimarlos con la calculadora del IRPF del ahorro.',
+  },
+];
+---
+<Calculadora
+  slug="jubilacion-fire"
+  titulo="Calculadora de jubilación y FIRE: cuánto necesitas"
+  descripcion="Calcula qué patrimonio necesitas para vivir de tus inversiones con la regla del 4 % y en cuántos años lo alcanzarías según tu ahorro y la rentabilidad."
+  revisado="2026-11-12"
+  faqs={faqs}
+  relacionadas={['fondos-indexados', 'interes-compuesto', 'plan-de-pensiones', 'irpf-ahorro']}
+  fuentes={[
+    { clave: 'cnmv', nota: 'información para inversores sobre riesgos y horizontes de inversión.' },
+    { clave: 'ine', nota: 'evolución de la inflación (IPC) y encuesta de presupuestos familiares.' },
+    { clave: 'bde', nota: 'educación financiera y planificación de la jubilación.' },
+  ]}
+  altoIframe={900}
+>
+  <CalculadoraFire slot="calc" client:load urlPublica={`${SITIO.url}/jubilacion-fire/`} />
+
+  <h2>La idea: un patrimonio que pague tus gastos</h2>
+  <p>
+    La independencia financiera se alcanza cuando lo que puedes retirar cada año de tus inversiones, sin agotarlas, cubre lo que
+    gastas. Para calcularlo hacen falta dos números: cuánto gastas al año y qué porcentaje del patrimonio puedes retirar con
+    prudencia. Ese porcentaje es la <strong>tasa de retirada</strong>.
+  </p>
+  <p>
+    Lo interesante es que el objetivo no depende de lo que ganas, sino de lo que gastas. Reducir gastos acerca la meta por dos
+    lados: necesitas menos patrimonio y, a igual sueldo, ahorras más cada mes.
+  </p>
+
+  <h2>Las fórmulas</h2>
+  <p class="formula">Patrimonio necesario = Gasto anual / tasa de retirada</p>
+  <p class="formula">Patrimonio del mes = Patrimonio anterior · (1 + r)<sup>1/12</sup> + ahorro mensual</p>
+  <ul>
+    <li><strong>Tasa de retirada</strong>: con el 4 %, el objetivo es 25 veces el gasto anual; con el 3 %, unas 33 veces.</li>
+    <li><strong>r</strong>: rentabilidad anual por encima de la inflación. Si esperas un 6 % y una inflación del 2 %, usa un 4 %.</li>
+    <li><strong>Plazo</strong>: los meses que tarda el patrimonio, creciendo y recibiendo tu ahorro, en llegar al objetivo.</li>
+  </ul>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Gastas 24.000 € al año, tienes 50.000 € invertidos y ahorras 1.000 € al mes. Supones una rentabilidad del 4 % sobre la
+    inflación y una tasa de retirada del 4 %. Son hipótesis de ejemplo y los datos con los que se abre la calculadora.
+  </p>
+  <ol>
+    <li>Patrimonio necesario: 24.000 € / 0,04 = <strong>{euros(ej.objetivo)}</strong>.</li>
+    <li>Llevas el {porcentaje(ej.progreso, 1)}: te faltan {euros(ej.falta)}.</li>
+    <li>Tus 50.000 € de hoy ya sostendrían una renta de {euros(ej.rentaMensualActual)} al mes.</li>
+    <li>Simulando mes a mes, alcanzas el objetivo en <strong>{plazo(ej.meses)}</strong>.</li>
+  </ol>
+  <p>
+    Durante ese tiempo habrás aportado {euros(ej.tabla[ej.tabla.length - 1].aportado)} contando lo que ya tenías. El resto,
+    hasta los {euros(ej.objetivo)}, es rentabilidad acumulada.
+  </p>
+
+  <h2>Qué acelera o retrasa la meta</h2>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Escenario</th><th scope="col">Patrimonio necesario</th><th scope="col">Años</th></tr></thead>
+      <tbody>
+        <tr><td>Ejemplo</td><td>{euros(ej.objetivo)}</td><td>{anios(ej.meses)}</td></tr>
+        <tr><td>Ahorrando 1.500 € al mes</td><td>{euros(ahorro1500.objetivo)}</td><td>{anios(ahorro1500.meses)}</td></tr>
+        <tr><td>Gastando 18.000 € al año</td><td>{euros(gasto18.objetivo)}</td><td>{anios(gasto18.meses)}</td></tr>
+        <tr><td>Con rentabilidad real del 2 %</td><td>{euros(rent2.objetivo)}</td><td>{anios(rent2.meses)}</td></tr>
+        <tr><td>Con tasa de retirada del 3,5 %</td><td>{euros(tasa35.objetivo)}</td><td>{anios(tasa35.meses)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    La rentabilidad es la variable que menos controlas y una de las que más pesa. Por eso conviene mirar el plan con una
+    rentabilidad baja y comprobar que sigue teniendo sentido.
+  </p>
+
+  <h2>Los límites de la regla del 4 %</h2>
+  <p>
+    La regla viene de estudios históricos sobre los mercados de Estados Unidos y horizontes de 30 años. Tiene tres limitaciones
+    que conviene conocer. La primera, que el pasado de un mercado concreto no garantiza el futuro de otro. La segunda, que una
+    jubilación anticipada puede durar bastante más de 30 años, y cuanto más larga, menor es la tasa que resiste. La tercera, el
+    orden de los resultados: varios años malos justo después de retirarte hacen mucho más daño que los mismos años malos al final.
+  </p>
+  <p>
+    Por eso muchas personas trabajan con tasas del 3 % o el 3,5 %, mantienen cierta flexibilidad en el gasto o cuentan con
+    ingresos adicionales. Cambia la tasa en la calculadora para ver cuánto mueve el objetivo.
+  </p>
+
+  <h2>Qué no incluye el cálculo</h2>
+  <ul>
+    <li><strong>Impuestos.</strong> Las ventas de fondos o acciones tributan por la ganancia.</li>
+    <li><strong>La pensión pública</strong> y otros ingresos futuros, que puedes restar del gasto a cubrir.</li>
+    <li><strong>Cambios en el gasto.</strong> Hijos, vivienda o salud pueden moverlo mucho a lo largo de los años.</li>
+    <li><strong>La volatilidad.</strong> El patrimonio no crece en línea recta, y el plazo real será distinto del calculado.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Mezclar rentabilidad nominal y gastos de hoy.</strong> Si usas la rentabilidad sin descontar la inflación, el plazo sale demasiado optimista.</li>
+    <li><strong>Subestimar el gasto.</strong> Revisa un año completo de gastos reales, incluidos los que no son mensuales.</li>
+    <li><strong>Contar la vivienda habitual como patrimonio.</strong> Solo cuenta lo que genera rentas o puedes ir vendiendo.</li>
+    <li><strong>Tratar el 4 % como una ley.</strong> Es un punto de partida para planificar, no una garantía.</li>
+    <li><strong>No prever un colchón.</strong> Tener uno o dos años de gastos fuera de la renta variable evita vender en plena caída.</li>
+  </ul>
+</Calculadora>

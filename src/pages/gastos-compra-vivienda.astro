@@ -1,0 +1,144 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraGastosCompra from '../components/calc/CalculadoraGastosCompra';
+import { calcularGastosCompra, type EntradaGastosCompra } from '../lib/calc/gastoscompra';
+import { euros, fechaLarga, numero, porcentaje } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora y con los tipos de la configuración fiscal.
+const { comunidades, ivaViviendaNueva: iva } = FISCAL.compraVivienda.valor;
+const an = comunidades.find((c) => c.id === 'an')!;
+const usada: EntradaGastosCompra = { precio: 200_000, vivienda: 'usada', tipoImpuesto: an.itp, gastosFijos: 1_500, entrada: 0.2 };
+const ej = calcularGastosCompra(usada);
+const nueva = calcularGastosCompra({ ...usada, vivienda: 'nueva', tipoImpuesto: iva, tipoAjd: an.ajd ?? 0 });
+// Rango del régimen común: sin los territorios forales ni Ceuta y Melilla.
+const itps = comunidades.filter((c) => !['pv', 'nc', 'ce'].includes(c.id)).map((c) => c.itp);
+const itpMin = Math.min(...itps);
+const itpMax = Math.max(...itps);
+const pct = (n: number) => `${numero(Math.round(n * 10000) / 100)} %`;
+
+const faqs = [
+  {
+    p: '¿Cuánto hay que pagar de gastos al comprar una vivienda?',
+    r: `Depende sobre todo del impuesto, que cambia según la comunidad autónoma y según sea nueva o de segunda mano. En el ejemplo, una vivienda de segunda mano de 200.000 € en Andalucía supone ${euros(ej.totalGastos)} entre impuesto, notaría, registro y gestoría: el ${porcentaje(ej.porcentaje)} del precio.`,
+  },
+  {
+    p: '¿Qué impuesto se paga por una vivienda de segunda mano?',
+    r: `El impuesto de transmisiones patrimoniales (ITP), que fija cada comunidad autónoma. En las comunidades de régimen común, los tipos generales van del ${pct(itpMin)} al ${pct(itpMax)}, y varias comunidades aplican tipos más altos a las viviendas más caras y tipos reducidos a determinados compradores.`,
+  },
+  {
+    p: '¿Qué impuestos se pagan por una vivienda nueva?',
+    r: `El IVA, que es del ${pct(iva)} con carácter general y del 4 % en las viviendas de protección oficial de régimen especial o de promoción pública, y el impuesto de actos jurídicos documentados (AJD), que depende de la comunidad. En Canarias, en lugar del IVA se aplica el IGIC, y en Ceuta y Melilla, el IPSI.`,
+  },
+  {
+    p: '¿Cuánto ahorro necesito para comprar una casa?',
+    r: `La entrada más los gastos. Los bancos suelen financiar hasta el 80 % del valor de la vivienda habitual, así que en el ejemplo harían falta 40.000 € de entrada y ${euros(ej.totalGastos)} de gastos: ${euros(ej.ahorroNecesario)}, cerca del ${porcentaje(ej.ahorroNecesario / 200_000, 0)} del precio.`,
+  },
+  {
+    p: '¿Quién paga los gastos de la hipoteca?',
+    r: 'Con la normativa vigente, el banco paga la notaría, el registro, la gestoría y el impuesto de actos jurídicos documentados de la escritura de hipoteca. El comprador paga la tasación y todos los gastos de la escritura de compraventa, que son los que calcula esta página.',
+  },
+  {
+    p: '¿Sobre qué valor se calcula el ITP?',
+    r: 'Sobre el mayor de dos: el precio que figura en la escritura o el valor de referencia que asigna el Catastro al inmueble, que funciona como base mínima. Si el valor de referencia de tu vivienda es superior al precio, introdúcelo en el campo del precio para calcular el impuesto.',
+  },
+  {
+    p: '¿Hay tipos reducidos para jóvenes o familias numerosas?',
+    r: 'En muchas comunidades sí, con requisitos de edad, renta, precio máximo o destino a vivienda habitual. Cambian con frecuencia. Consulta la web de la agencia tributaria de tu comunidad y, si cumples las condiciones, escribe el tipo reducido en la calculadora.',
+  },
+];
+---
+<Calculadora
+  slug="gastos-compra-vivienda"
+  titulo="Calculadora de gastos de compra de una vivienda"
+  descripcion="Calcula los impuestos y gastos de comprar una vivienda nueva o de segunda mano en tu comunidad autónoma: ITP, IVA, AJD, notaría y registro, y el ahorro que necesitas."
+  revisado="2026-11-12"
+  faqs={faqs}
+  relacionadas={['cuota-hipoteca', 'hipoteca-fija-o-variable', 'amortizacion-anticipada', 'interes-compuesto']}
+  fuentes={[
+    { clave: 'hacienda', nota: 'tributación autonómica: tipos del ITP y del AJD de cada comunidad, y valor de referencia del Catastro.' },
+    { clave: 'aeat', nota: 'IVA o ITP en la compra de una vivienda y tipos del IVA.' },
+    { clave: 'bde', nota: 'gastos de la compraventa y de la hipoteca.' },
+    { clave: 'boe', nota: 'Ley 5/2019, reguladora de los contratos de crédito inmobiliario (reparto de los gastos de la hipoteca).' },
+  ]}
+  altoIframe={760}
+>
+  <CalculadoraGastosCompra slot="calc" client:load comunidades={comunidades} iva={iva} urlPublica={`${SITIO.url}/gastos-compra-vivienda/`} />
+
+  <h2>Qué gastos tiene comprar una vivienda</h2>
+  <p>
+    Además del precio, la compra de una vivienda tiene dos tipos de gastos. El más grande es el <strong>impuesto</strong>, que es
+    un porcentaje del precio. Los demás son <strong>gastos de formalización</strong>: la notaría que autoriza la escritura, el
+    Registro de la Propiedad que la inscribe y, normalmente, una gestoría que tramita los papeles. Estos últimos dependen poco
+    del precio.
+  </p>
+  <p>
+    Importa conocerlos antes de buscar casa porque se pagan al contado. La hipoteca financia una parte del precio, pero no los
+    gastos: salen de tu ahorro, igual que la entrada.
+  </p>
+
+  <h2>Las fórmulas</h2>
+  <p class="formula">Segunda mano: Gastos = Precio · ITP + notaría, registro y gestoría</p>
+  <p class="formula">Nueva: Gastos = Precio · (IVA + AJD) + notaría, registro y gestoría</p>
+  <p class="formula">Ahorro necesario = Precio · % de entrada + Gastos</p>
+  <ul>
+    <li><strong>ITP</strong>: impuesto de transmisiones patrimoniales. Lo fija cada comunidad autónoma.</li>
+    <li><strong>IVA</strong>: {pct(iva)} con carácter general en vivienda nueva, y 4 % en las de protección oficial de régimen especial o de promoción pública.</li>
+    <li><strong>AJD</strong>: impuesto de actos jurídicos documentados, también autonómico. Se paga en la vivienda nueva, además del IVA.</li>
+  </ul>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Compras una vivienda de segunda mano en Andalucía por 200.000 €, con una entrada del 20 %. Son los datos con los que se abre
+    la calculadora.
+  </p>
+  <ol>
+    <li>ITP: 200.000 € × {pct(an.itp)} = <strong>{euros(ej.impuesto)}</strong>.</li>
+    <li>Notaría, registro y gestoría: 1.500 €. Es una estimación que puedes cambiar: pide presupuesto para afinarla.</li>
+    <li>Total de gastos: <strong>{euros(ej.totalGastos)}</strong>, el {porcentaje(ej.porcentaje)} del precio.</li>
+    <li>Entrada: 20 % de 200.000 € = {euros(ej.entrada)}. Hipoteca: {euros(ej.hipoteca)}.</li>
+    <li>Ahorro necesario: {euros(ej.entrada)} + {euros(ej.totalGastos)} = <strong>{euros(ej.ahorroNecesario)}</strong>.</li>
+  </ol>
+  <p>
+    Si la misma vivienda fuera nueva, pagarías {euros(nueva.impuesto)} de IVA y {euros(nueva.ajd)} de AJD. Los gastos subirían a
+    {euros(nueva.totalGastos)}, el {porcentaje(nueva.porcentaje)} del precio, y el ahorro necesario a {euros(nueva.ahorroNecesario)}.
+  </p>
+
+  <h2>Tipos generales por comunidad autónoma</h2>
+  <p>
+    Estos son los tipos generales que usa la calculadora como punto de partida, revisados el {fechaLarga(FISCAL.compraVivienda.verificadoEl)}.
+    No incluyen los tipos reducidos ni las bonificaciones, y cambian con frecuencia: <strong>confirma el tuyo en la agencia tributaria
+    de tu comunidad antes de hacer cuentas definitivas</strong>.
+  </p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Comunidad</th><th scope="col">ITP general</th><th scope="col">AJD general</th></tr></thead>
+      <tbody>
+        {comunidades.map((c) => <tr><td>{c.nombre}</td><td>{pct(c.itp)}{c.nota && c.id !== 'cn' ? ' *' : ''}</td><td>{c.ajd === null ? 'Consultar' : pct(c.ajd)}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+  <p>
+    * Con particularidades: el tipo sube para las viviendas más caras, hay un tipo distinto para la vivienda habitual, se aplica
+    una bonificación o depende del territorio. La calculadora te lo recuerda al elegir la comunidad. En Canarias, Ceuta y
+    Melilla la vivienda nueva no paga IVA, sino IGIC o IPSI: escribe su tipo en el campo del impuesto.
+  </p>
+
+  <h2>Lo que no está en el cálculo</h2>
+  <ul>
+    <li><strong>La tasación</strong>, si pides hipoteca. La paga el comprador. Puedes añadirla en «Otros gastos».</li>
+    <li><strong>La comisión de la inmobiliaria</strong>, si la paga el comprador, y la de apertura de la hipoteca, si existe.</li>
+    <li><strong>La plusvalía municipal</strong>, que por ley corresponde al vendedor.</li>
+    <li><strong>Reformas, mudanza y alta de suministros.</strong> No son gastos de compra, pero salen del mismo ahorro.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Ahorrar solo para la entrada.</strong> Sin el dinero de los gastos, la operación no se puede firmar.</li>
+    <li><strong>Aplicar el tipo de otra comunidad.</strong> Cuenta la comunidad donde está la vivienda, no donde vives.</li>
+    <li><strong>Olvidar el valor de referencia del Catastro.</strong> Si es mayor que el precio, el impuesto se calcula sobre él.</li>
+    <li><strong>Dar por hecho un tipo reducido.</strong> Tienen requisitos estrictos; compruébalos antes de contar con ellos.</li>
+    <li><strong>Confundir gastos de compra y gastos de hipoteca.</strong> Los de la escritura de hipoteca, salvo la tasación, los paga el banco.</li>
+  </ul>
+</Calculadora>
