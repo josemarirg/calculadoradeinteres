@@ -1,0 +1,149 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraPensiones from '../components/calc/CalculadoraPensiones';
+import { calcularPensiones, type EntradaPensiones } from '../lib/calc/pensiones';
+import { euros, eurosSinCentimos, porcentaje } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora y con los límites de la configuración fiscal.
+const lim = FISCAL.planPensiones.valor;
+const base: EntradaPensiones = { aportacionAnual: 1_500, anios: 25, rentabilidad: 0.04, comision: 0.01, tipoMarginal: 0.3, tipoRescate: 0.2, limiteAportacion: lim.conjunto };
+const ej = calcularPensiones(base);
+const rescate30 = calcularPensiones({ ...base, tipoRescate: 0.3 });
+const rescate10 = calcularPensiones({ ...base, tipoRescate: 0.1 });
+const barato = calcularPensiones({ ...base, comision: 0.003 });
+const marginal37 = calcularPensiones({ ...base, tipoMarginal: 0.37 });
+const limInd = eurosSinCentimos(lim.individual);
+const limConj = eurosSinCentimos(lim.conjunto);
+
+const faqs = [
+  {
+    p: '¿Cuánto desgrava un plan de pensiones?',
+    r: `Lo que aportas se resta de tu base imponible, así que te ahorras la aportación multiplicada por tu tipo marginal del IRPF. Con una aportación de ${limInd} y un tipo marginal del 30 %, el ahorro es de ${euros(ej.ahorroFiscalAnual)} en la declaración de ese año.`,
+  },
+  {
+    p: '¿Cuál es el máximo que puedo aportar?',
+    r: `En planes individuales, ${limInd} al año con derecho a reducción. El límite puede llegar a ${limConj} sumando las aportaciones a planes de empleo, los que promueve la empresa, y nunca puede superarse el ${porcentaje(lim.porcentajeRendimientos, 0)} de tus rendimientos netos del trabajo y de actividades económicas.`,
+  },
+  {
+    p: '¿Cómo tributa el rescate de un plan de pensiones?',
+    r: 'Todo lo que rescatas, aportaciones y ganancias, tributa como rendimiento del trabajo, igual que un sueldo o una pensión, y se suma al resto de tus ingresos de ese año. No va a la base del ahorro. Por eso el tipo que pagues dependerá de cuánto rescates cada año.',
+  },
+  {
+    p: '¿Es mejor rescatar en forma de capital o de renta?',
+    r: 'Rescatar todo de golpe concentra el ingreso en un año y puede llevarlo a los tramos altos del IRPF. Repartirlo en varios años, en forma de renta, suele dar un tipo medio más bajo. La calculadora lo recoge en el campo «IRPF medio al rescatar»: pon un tipo más alto si piensas rescatar de una vez.',
+  },
+  {
+    p: '¿Compensa un plan de pensiones?',
+    r: `Fiscalmente, cuando el tipo al que rescatas es bastante menor que el tipo al que dedujiste. En el ejemplo, el ahorro fiscal supera al impuesto del rescate solo si este es inferior al ${porcentaje(ej.tipoRescateEquilibrio, 1)}. Además cuentan las comisiones y la falta de liquidez.`,
+  },
+  {
+    p: '¿Cuándo puedo rescatar el plan?',
+    r: 'En los supuestos que fija la normativa: jubilación, incapacidad, dependencia y fallecimiento, y algunos supuestos excepcionales o de antigüedad de las aportaciones. No es un producto del que puedas disponer libremente: consulta las condiciones antes de aportar dinero que puedas necesitar.',
+  },
+  {
+    p: '¿Tienen alguna ventaja las aportaciones antiguas?',
+    r: 'Las aportaciones anteriores a 2007 pueden beneficiarse de una reducción del 40 % si se rescatan en forma de capital. Es un régimen transitorio con plazo: solo se aplica a lo cobrado en el año de la jubilación o en los dos siguientes. La calculadora no la aplica: si tienes aportaciones de esa época, consulta a la Agencia Tributaria o a tu gestora.',
+  },
+];
+---
+<Calculadora
+  slug="plan-de-pensiones"
+  titulo="Calculadora de plan de pensiones: ahorro fiscal y rescate"
+  descripcion="Calcula cuánto acumularás en tu plan de pensiones, cuánto te ahorras en el IRPF con las aportaciones y cuánto pagarás de impuestos al rescatarlo."
+  revisado="2026-11-12"
+  faqs={faqs}
+  relacionadas={['jubilacion-fire', 'fondos-indexados', 'interes-compuesto', 'irpf-ahorro']}
+  fuentes={[
+    { clave: 'aeat', nota: 'reducciones por aportaciones a sistemas de previsión social y tributación de las prestaciones.' },
+    { clave: 'cnmv', nota: 'información para inversores sobre productos de ahorro a largo plazo.' },
+    { clave: 'boe', nota: 'Ley 35/2006, del IRPF, y texto refundido de la Ley de Planes y Fondos de Pensiones.' },
+  ]}
+  altoIframe={760}
+>
+  <CalculadoraPensiones slot="calc" client:load limiteIndividual={lim.individual} limiteConjunto={lim.conjunto} urlPublica={`${SITIO.url}/plan-de-pensiones/`} />
+
+  <h2>Cómo funciona la fiscalidad de un plan de pensiones</h2>
+  <p>
+    Un plan de pensiones no elimina impuestos: los <strong>aplaza</strong>. Cuando aportas, la aportación se resta de tu base
+    imponible y pagas menos IRPF ese año. Cuando rescatas, todo lo que sacas tributa como si fuera un sueldo. El resultado final
+    depende de la diferencia entre dos tipos: el que te ahorras hoy y el que pagarás entonces.
+  </p>
+  <p>
+    Por eso la calculadora pide los dos. El <strong>tipo marginal</strong> es el del último tramo de tu IRPF actual, el que se
+    aplica a tu último euro ganado. El <strong>tipo medio al rescatar</strong> es el porcentaje que esperas pagar por el dinero
+    que saques: será más bajo si rescatas poco a poco y tus otros ingresos son modestos, y más alto si rescatas todo de golpe.
+  </p>
+
+  <h2>Las fórmulas</h2>
+  <p class="formula">Ahorro fiscal anual = Aportación · tipo marginal</p>
+  <p class="formula">Capital = A · ((1 + g)<sup>n</sup> − 1) / g, con g = (1 + rentabilidad) · (1 − comisiones) − 1</p>
+  <p class="formula">Impuesto del rescate = Capital · tipo medio al rescatar</p>
+  <ul>
+    <li><strong>A</strong>: aportación anual, hecha al final de cada año.</li>
+    <li><strong>n</strong>: años hasta el rescate.</li>
+    <li><strong>Comisiones</strong>: las de gestión y depósito del plan, que se descuentan cada año del patrimonio.</li>
+  </ul>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Aportas {limInd} al año durante 25 años a un plan con una rentabilidad del 4 % anual y unas comisiones del 1 %. Tu tipo
+    marginal es del 30 % y esperas pagar un 20 % de media al rescatar. Son hipótesis de ejemplo y los datos con los que se abre
+    la calculadora.
+  </p>
+  <ol>
+    <li>Ahorro fiscal: {limInd} × 30 % = {euros(ej.ahorroFiscalAnual)} al año, <strong>{euros(ej.ahorroFiscalTotal)}</strong> en 25 años.</li>
+    <li>Crecimiento neto: 1,04 × 0,99 − 1 = {porcentaje(1.04 * 0.99 - 1)} anual.</li>
+    <li>Capital acumulado: <strong>{euros(ej.capitalFinal)}</strong>, de los que {euros(ej.totalAportado)} son aportaciones.</li>
+    <li>Impuesto del rescate: {euros(ej.capitalFinal)} × 20 % = {euros(ej.impuestoRescate)}.</li>
+    <li>Recibes {euros(ej.netoRescate)}. El ahorro fiscal supera al impuesto en {euros(ej.saldoFiscal)}.</li>
+  </ol>
+  <p>
+    El margen es estrecho: el plan del ejemplo compensa fiscalmente solo si al rescatar pagas menos del {porcentaje(ej.tipoRescateEquilibrio, 1)}.
+    Con un 30 % al rescatar, el impuesto sería de {euros(rescate30.impuestoRescate)} y superaría al ahorro fiscal en
+    {euros(-rescate30.saldoFiscal)}. Con un 10 %, el saldo a tu favor sería de {euros(rescate10.saldoFiscal)}.
+  </p>
+
+  <h2>Lo que cambia el resultado</h2>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Escenario</th><th scope="col">Capital</th><th scope="col">Ahorro fiscal</th><th scope="col">Neto al rescatar</th></tr></thead>
+      <tbody>
+        <tr><td>Ejemplo</td><td>{euros(ej.capitalFinal)}</td><td>{euros(ej.ahorroFiscalTotal)}</td><td>{euros(ej.netoRescate)}</td></tr>
+        <tr><td>Comisiones del 0,3 %</td><td>{euros(barato.capitalFinal)}</td><td>{euros(barato.ahorroFiscalTotal)}</td><td>{euros(barato.netoRescate)}</td></tr>
+        <tr><td>Tipo marginal del 37 %</td><td>{euros(marginal37.capitalFinal)}</td><td>{euros(marginal37.ahorroFiscalTotal)}</td><td>{euros(marginal37.netoRescate)}</td></tr>
+        <tr><td>Rescate al 30 %</td><td>{euros(rescate30.capitalFinal)}</td><td>{euros(rescate30.ahorroFiscalTotal)}</td><td>{euros(rescate30.netoRescate)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Las comisiones pesan tanto como los impuestos: bajar del 1 % al 0,3 % añade {euros(barato.capitalFinal - ej.capitalFinal)}
+    al capital. Y cuanto más alto es tu tipo marginal hoy, más valor tiene la deducción.
+  </p>
+
+  <h2>Límites de aportación</h2>
+  <p>
+    El límite general para planes individuales es de {limInd} al año. Puede ampliarse hasta {limConj} con aportaciones a planes
+    de empleo, y existe además un tope del {porcentaje(lim.porcentajeRendimientos, 0)} de los rendimientos netos del trabajo y de
+    actividades económicas. La calculadora admite hasta {limConj} y te avisa cuando superas el límite individual. Los límites
+    los fija la ley del IRPF y pueden cambiar cada año: compruébalos en la Agencia Tributaria.
+  </p>
+
+  <h2>Qué no incluye el cálculo</h2>
+  <ul>
+    <li><strong>Lo que hagas con el ahorro fiscal.</strong> Si lo inviertes cada año en lugar de gastarlo, el resultado mejora.</li>
+    <li><strong>La inflación.</strong> Para verlo en euros de hoy, usa una rentabilidad descontando la inflación.</li>
+    <li><strong>Las reducciones especiales</strong> de las aportaciones anteriores a 2007.</li>
+    <li><strong>Los regímenes forales</strong> del País Vasco y Navarra, que tienen reglas propias.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Mirar solo la deducción.</strong> El dinero que no pagas hoy lo pagarás, total o parcialmente, al rescatar.</li>
+    <li><strong>Usar el tipo medio en lugar del marginal</strong> para el ahorro fiscal. La aportación se resta de la parte más alta de tu renta.</li>
+    <li><strong>Rescatar todo de golpe sin calcularlo.</strong> Un rescate grande en un solo año puede tributar a tipos muy altos.</li>
+    <li><strong>No mirar las comisiones.</strong> Dos planes con la misma cartera y distinta comisión dan resultados muy diferentes en 25 años.</li>
+    <li><strong>Aportar dinero que puedes necesitar.</strong> No podrás disponer de él hasta que se dé uno de los supuestos de rescate.</li>
+  </ul>
+</Calculadora>

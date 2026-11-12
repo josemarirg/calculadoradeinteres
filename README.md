@@ -15,8 +15,8 @@ npm run preview    # sirve dist/ en local
 ```
 
 ## Estructura
-- `src/lib/calc/` — lógica financiera pura, sin interfaz. Un módulo por calculadora más `tae.ts` y `validacion.ts`.
-- `tests/` — un archivo de tests por módulo.
+- `src/lib/calc/` — lógica financiera pura, sin interfaz. Un módulo por calculadora más `tae.ts` y `validacion.ts`. Las 17 calculadoras previstas están publicadas.
+- `tests/` — tests de cálculo: un archivo por módulo en el MVP, `tanda1.test.ts` y `tanda2.test.ts` para el resto.
 - `src/config/` — **todo lo configurable**: `fiscal.ts` (parámetros fiscales), `afiliados.ts` (enlaces y productos), `titular.ts` (datos legales), `sitio.ts` (autor, registro de calculadoras, fuentes).
 - `src/components/calc/` — islas interactivas. `src/layouts/`, `src/pages/` — plantilla y rutas.
 
@@ -49,3 +49,4 @@ Resultados de la última auditoría en `INFORME.md`.
 
 ## Antes de publicar
 Revisa `TODO-VERIFICAR.md` y `DECISIONES.md`. Busca `TODO(titular)` en el código.
+El único dato de `src/config/fiscal.ts` con `verificado: false` es la tabla de ITP y AJD por comunidad: está contrastada con varias fuentes coincidentes, pero no con la oficial. Es editable en la calculadora y la página pide confirmarla.

@@ -1,0 +1,152 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraLetras from '../components/calc/CalculadoraLetras';
+import { calcularLetras, tipoDesdePrecio } from '../lib/calc/letras';
+import { calcularDeposito } from '../lib/calc/deposito';
+import { euros, numero, porcentaje } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const tipoIrpf = FISCAL.tramosAhorro.valor[0].tipo;
+const ret = FISCAL.retencionIntereses.valor;
+const ej = calcularLetras({ nominal: 10_000, dias: 364, modo: 'tipo', tipo: 0.02, tipoIrpf });
+const inversa = calcularLetras({ nominal: 1_000, dias: 182, modo: 'precio', precio: 99 });
+const boe = tipoDesdePrecio(98.343, 266);
+const conComision = calcularLetras({ nominal: 10_000, dias: 364, modo: 'tipo', tipo: 0.02, tipoIrpf, comisiones: 15 });
+const plazos = [91, 182, 273, 364].map((dias) => ({ dias, r: calcularLetras({ nominal: 1_000, dias, modo: 'tipo', tipo: 0.02 }) }));
+const deposito = calcularDeposito({ importe: ej.importeInvertido, tipo: ej.taeEquivalente, claseTipo: 'TAE', plazo: 364, unidad: 'dias', retencion: ret });
+const precio3 = (p: number) => numero(Math.round(p * 1000) / 1000);
+
+const faqs = [
+  {
+    p: '¿Cómo se calcula la rentabilidad de una Letra del Tesoro?',
+    r: `Con interés simple y un año de 360 días: tipo = (100 / precio − 1) × 360 / días. Una Letra comprada al ${precio3(inversa.precio)} % a la que le quedan 182 días rinde un ${porcentaje(inversa.tipo, 3)}.`,
+  },
+  {
+    p: '¿Cuánto cuesta una Letra del Tesoro?',
+    r: `Menos de 1.000 €, que es lo que cobras al vencimiento. La diferencia es tu ganancia. Con un tipo del 2 % a 364 días, cada Letra cuesta ${euros(ej.importeInvertido / 10)} y deja ${euros(ej.rendimientoBruto / 10)}.`,
+  },
+  {
+    p: '¿Las Letras del Tesoro tienen retención?',
+    r: 'No. A diferencia de los depósitos y las cuentas, el rendimiento de las Letras se cobra sin retención a cuenta. Eso no significa que esté exento: hay que declararlo en la renta del año en que vencen o se venden.',
+  },
+  {
+    p: '¿Cuánto se paga de impuestos por las Letras?',
+    r: `La ganancia es un rendimiento del capital mobiliario y tributa en la base del ahorro, a partir del ${porcentaje(tipoIrpf, 0)}. La calculadora estima el impuesto con ese primer tramo; si tus rentas del ahorro son altas, parte tributará a tipos superiores.`,
+  },
+  {
+    p: '¿Qué pasa si vendo la Letra antes del vencimiento?',
+    r: 'La vendes en el mercado al precio de ese día, que puede ser mayor o menor que el que pagaste. Si los tipos de interés han subido desde que compraste, el precio habrá bajado y puedes ganar menos de lo previsto o incluso perder. Si esperas al vencimiento, cobras el nominal.',
+  },
+  {
+    p: '¿Por qué el tipo de la Letra no coincide con la TAE?',
+    r: `Porque el Tesoro usa interés simple con año de 360 días y la TAE usa interés compuesto con año de 365. La Letra del ejemplo, al 2 %, equivale a una TAE del ${porcentaje(ej.taeEquivalente, 3)}. Para comparar con un depósito, usa la TAE equivalente.`,
+  },
+  {
+    p: '¿Puedo comprar Letras por menos de 1.000 €?',
+    r: 'No directamente: el nominal mínimo es de 1.000 € y las peticiones van en múltiplos de esa cantidad. Con importes menores solo puedes acceder a través de fondos que invierten en deuda pública a corto plazo, que tienen sus propias comisiones.',
+  },
+];
+---
+<Calculadora
+  slug="letras-del-tesoro"
+  titulo="Calculadora de Letras del Tesoro: precio y rentabilidad"
+  descripcion="Calcula cuánto pagas por una Letra del Tesoro, cuánto ganas y qué rentabilidad obtienes a partir del tipo o del precio. Con la fórmula oficial y los impuestos."
+  revisado="2026-11-12"
+  faqs={faqs}
+  relacionadas={['rentabilidad-deposito', 'cuenta-remunerada', 'irpf-ahorro', 'interes-simple']}
+  fuentes={[
+    { clave: 'tesoro', nota: 'características de las Letras, calendario y resultados de las subastas.' },
+    { clave: 'boe', nota: 'resultados oficiales de las subastas, con precios y tipos de interés.' },
+    { clave: 'aeat', nota: 'retenciones y tributación de los rendimientos del capital mobiliario.' },
+    { clave: 'bde', nota: 'cuentas directas de deuda del Estado y sus tarifas.' },
+  ]}
+  altoIframe={640}
+>
+  <CalculadoraLetras slot="calc" client:load tipoIrpf={tipoIrpf} urlPublica={`${SITIO.url}/letras-del-tesoro/`} />
+
+  <h2>Qué es una Letra del Tesoro</h2>
+  <p>
+    Las Letras del Tesoro son deuda del Estado a corto plazo: se emiten a 3, 6, 9 y 12 meses. No pagan intereses periódicos. Se
+    emiten <strong>al descuento</strong>: compras cada Letra por menos de 1.000 € y, al vencimiento, el Tesoro te devuelve
+    1.000 €. La diferencia entre lo que pagas y lo que cobras es tu rendimiento.
+  </p>
+  <p>
+    Por eso en una Letra se habla de dos cifras que son la misma cosa vista de dos formas: el <strong>precio</strong>, en
+    porcentaje del nominal, y el <strong>tipo de interés</strong>. Cuanto más bajo es el precio, más alto es el tipo. La
+    calculadora convierte uno en otro: elige qué dato conoces y escribe el otro.
+  </p>
+
+  <h2>La fórmula</h2>
+  <p>Para las Letras, que vencen como mucho en un año, el Tesoro usa interés simple con un año de 360 días:</p>
+  <p class="formula">Precio = 100 / (1 + i · d/360) &nbsp;&nbsp;&nbsp; i = (100/Precio − 1) · 360/d</p>
+  <ul>
+    <li><strong>Precio</strong>: lo que pagas por cada 100 € de nominal. Un precio de 98,5 son 985 € por Letra.</li>
+    <li><strong>i</strong>: tipo de interés anual, en tanto por uno.</li>
+    <li><strong>d</strong>: días naturales desde la compra hasta el vencimiento.</li>
+  </ul>
+  <p>
+    La fórmula se puede comprobar con los resultados que el Tesoro publica en el BOE tras cada subasta. En la de Letras a 9 meses
+    del 14 de marzo de 2025, con 266 días de plazo, el precio mínimo aceptado fue 98,343 y el tipo publicado, el 2,281 %. Con
+    la fórmula sale un {porcentaje(boe, 3)}.
+  </p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Quieres 10.000 € nominales, es decir, 10 Letras, a las que les quedan 364 días, y el tipo es del 2 %. Es un tipo de ejemplo,
+    no el de la última subasta, y son los datos con los que se abre la calculadora.
+  </p>
+  <ol>
+    <li>Precio: 100 / (1 + 0,02 × 364/360) = {precio3(ej.precio)} %.</li>
+    <li>Pagas hoy: 10.000 € × {precio3(ej.precio)} % = <strong>{euros(ej.importeInvertido)}</strong>.</li>
+    <li>Cobras al vencimiento: 10.000 €. Ganancia antes de impuestos: <strong>{euros(ej.rendimientoBruto)}</strong>.</li>
+    <li>IRPF orientativo al {porcentaje(tipoIrpf, 0)}: {euros(ej.irpf)}. Ganancia después de impuestos: {euros(ej.rendimientoTrasImpuestos)}.</li>
+  </ol>
+  <p>
+    Si el intermediario te cobra 15 € entre compra, custodia y transferencia, la ganancia baja a {euros(conComision.rendimientoNeto)}
+    y el tipo efectivo, del 2 % al {porcentaje(conComision.tipoTrasComisiones, 3)}. En importes pequeños, las comisiones pesan mucho.
+  </p>
+
+  <h2>Precio y ganancia según el plazo</h2>
+  <p>Con el mismo tipo, una Letra con más plazo cuesta menos, porque el descuento cubre más días. Por cada Letra de 1.000 € al 2 %:</p>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Días hasta el vencimiento</th><th scope="col">Precio</th><th scope="col">Pagas</th><th scope="col">Ganas</th></tr></thead>
+      <tbody>
+        {plazos.map((f) => <tr><td>{f.dias}</td><td>{precio3(f.r.precio)} %</td><td>{euros(f.r.importeInvertido)}</td><td>{euros(f.r.rendimientoBruto)}</td></tr>)}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Impuestos: sin retención, pero se declaran</h2>
+  <p>
+    El rendimiento de una Letra es un rendimiento del capital mobiliario y tributa en la base del ahorro del IRPF, como los
+    intereses de una cuenta. La diferencia es práctica: en las Letras no hay retención, así que cobras la ganancia íntegra y pagas
+    el impuesto al hacer la declaración del año siguiente. Conviene reservar ese dinero.
+  </p>
+  <p>
+    La calculadora estima el impuesto con el primer tramo de la escala del ahorro, el {porcentaje(tipoIrpf, 0)}. Si sumando el
+    resto de tus rentas del ahorro superas ese tramo, usa la calculadora del IRPF del ahorro para afinar.
+  </p>
+
+  <h2>Letras frente a un depósito</h2>
+  <p>
+    Para comparar, mira la TAE equivalente que muestra la calculadora y no el tipo de la Letra: usan convenciones distintas. La
+    Letra del ejemplo equivale a una TAE del {porcentaje(ej.taeEquivalente, 3)}. Un depósito a esa TAE, por el mismo importe y
+    plazo, daría los mismos {euros(deposito.interesesBrutos)} brutos, pero el banco te retendría {euros(deposito.retencion)} al abonarlos.
+  </p>
+  <p>
+    El impuesto final es el mismo en los dos casos. Cambia el momento en que lo pagas, las comisiones, que en un depósito no
+    suele haber, y la liquidez: la Letra se puede vender antes de vencer, al precio que marque el mercado ese día.
+  </p>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Confundir el tipo de la subasta con el de hoy.</strong> El tipo cambia en cada subasta y, en el mercado, cada día.</li>
+    <li><strong>Olvidar las comisiones.</strong> Comprar a través de un banco o un bróker tiene costes que la subasta no publica.</li>
+    <li><strong>Creer que no tributan.</strong> Que no haya retención no significa que estén exentas.</li>
+    <li><strong>Contar los días como meses de 30.</strong> El plazo real son los días naturales hasta el vencimiento.</li>
+    <li><strong>Dar por segura la ganancia si piensas vender antes.</strong> Solo está garantizado el nominal al vencimiento.</li>
+  </ul>
+</Calculadora>

@@ -1,0 +1,140 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraFondos from '../components/calc/CalculadoraFondos';
+import { calcularFondos, type EntradaFondos } from '../lib/calc/fondos';
+import { euros, porcentaje } from '../lib/formato';
+import { FISCAL } from '../config/fiscal';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const tramos = FISCAL.tramosAhorro.valor;
+const base: EntradaFondos = { capitalInicial: 10_000, aportacionMensual: 200, anios: 20, rentabilidad: 0.06, comision: 0.002, tramos };
+const ej = calcularFondos(base);
+const caro = calcularFondos({ ...base, comision: 0.015 });
+const al4 = calcularFondos({ ...base, rentabilidad: 0.04 });
+const al8 = calcularFondos({ ...base, rentabilidad: 0.08 });
+const a30 = calcularFondos({ ...base, anios: 30 });
+const tipoMedio = ej.impuesto / ej.ganancia;
+
+const faqs = [
+  {
+    p: '¿Qué es un fondo indexado?',
+    r: 'Es un fondo de inversión que no intenta batir al mercado, sino replicar un índice, como uno de bolsa mundial o de deuda pública. Al no necesitar un equipo que elija valores, sus comisiones suelen ser mucho más bajas que las de un fondo de gestión activa.',
+  },
+  {
+    p: '¿Cuánto puedo ganar con un fondo indexado?',
+    r: `Nadie lo sabe: depende de lo que haga el índice. La calculadora proyecta el resultado con la rentabilidad que tú supongas. Con 10.000 € iniciales, 200 € al mes y un 6 % anual durante 20 años, el valor estimado es de ${euros(ej.valorFinal)}; con un 4 %, de ${euros(al4.valorFinal)}.`,
+  },
+  {
+    p: '¿Cuánto afectan las comisiones?',
+    r: `Más de lo que parece, porque se descuentan cada año sobre todo el patrimonio. En el ejemplo, un 0,2 % anual resta ${euros(ej.costeComisiones)} en 20 años; un 1,5 %, ${euros(caro.costeComisiones)}.`,
+  },
+  {
+    p: '¿Cuándo se pagan impuestos por un fondo?',
+    r: 'Solo al reembolsar, y solo por la ganancia. Mientras no vendas no tributas, y en España puedes traspasar el dinero de un fondo a otro sin pagar impuestos en ese momento. Al reembolsar, la ganancia tributa en la base del ahorro y la entidad practica una retención a cuenta.',
+  },
+  {
+    p: '¿Qué rentabilidad debo poner?',
+    r: 'Una hipótesis prudente y, mejor, varias. La rentabilidad pasada de un índice no garantiza la futura, y la renta variable puede pasar años en negativo. Prueba un escenario bajo, uno medio y uno alto para ver el rango de resultados.',
+  },
+  {
+    p: '¿El resultado tiene en cuenta la inflación?',
+    r: 'No directamente. Si quieres ver el resultado en euros de hoy, introduce una rentabilidad real: la que esperas menos la inflación. Por ejemplo, un 4 % en lugar de un 6 % si supones una inflación del 2 %.',
+  },
+  {
+    p: '¿Es lo mismo un fondo indexado que un ETF?',
+    r: 'Los dos replican índices, pero un ETF cotiza en bolsa como una acción. En España, los fondos de inversión pueden traspasarse entre sí sin tributar y los ETF, con carácter general, no. La proyección de esta calculadora sirve para ambos si no hay ventas intermedias.',
+  },
+];
+---
+<Calculadora
+  slug="fondos-indexados"
+  titulo="Calculadora de fondos indexados: rentabilidad y comisiones"
+  descripcion="Proyecta cuánto puede valer tu inversión en fondos indexados con aportaciones mensuales, cuánto te cuestan las comisiones y cuánto pagarías de impuestos al reembolsar."
+  revisado="2026-11-12"
+  faqs={faqs}
+  relacionadas={['interes-compuesto', 'jubilacion-fire', 'plan-de-pensiones', 'irpf-ahorro']}
+  fuentes={[
+    { clave: 'cnmv', nota: 'información para inversores sobre fondos, comisiones y riesgos.' },
+    { clave: 'aeat', nota: 'tributación de las ganancias patrimoniales y retenciones.' },
+    { clave: 'ine', nota: 'evolución de la inflación (IPC).' },
+  ]}
+  altoIframe={900}
+>
+  <CalculadoraFondos slot="calc" client:load tramos={tramos} urlPublica={`${SITIO.url}/fondos-indexados/`} />
+
+  <h2>Qué calcula y qué no</h2>
+  <p>
+    La calculadora proyecta el valor de una inversión periódica en fondos indexados y responde a tres preguntas: cuánto podrías
+    tener, cuánto te habrán costado las comisiones y cuánto te quedaría después de impuestos si lo vendieras todo al final.
+  </p>
+  <p>
+    Lo que no puede hacer es predecir. La rentabilidad la pones tú y el cálculo la aplica igual todos los años. Un fondo de
+    renta variable no se comporta así: sube y baja, a veces mucho, y puede tardar años en recuperar una caída. Usa el resultado
+    para comparar escenarios y para entender el peso del plazo y de los costes, no como una promesa.
+  </p>
+
+  <h2>Las fórmulas</h2>
+  <p class="formula">Crecimiento anual neto = (1 + rentabilidad) · (1 − comisiones) − 1</p>
+  <p class="formula">Impuesto = escala del ahorro aplicada a (Valor final − Aportado)</p>
+  <ul>
+    <li><strong>Rentabilidad</strong>: la que supones para el índice, antes de comisiones.</li>
+    <li><strong>Comisiones</strong>: los gastos corrientes del fondo, que figuran en su documento de datos fundamentales. Si tu plataforma cobra una comisión de custodia o de gestión, súmala.</li>
+    <li><strong>Aportaciones</strong>: se suman al final de cada mes y el valor se calcula mes a mes.</li>
+  </ul>
+  <p>
+    El coste de las comisiones no es la suma de lo que el fondo cobra cada año. Es la diferencia entre lo que tendrías sin
+    comisiones y lo que tienes con ellas, que incluye también la rentabilidad que ese dinero habría generado.
+  </p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Inviertes 10.000 € y aportas 200 € al mes durante 20 años en un fondo con unas comisiones del 0,2 % anual, y supones una
+    rentabilidad del 6 % anual. Son los datos con los que se abre la calculadora.
+  </p>
+  <ol>
+    <li>Aportas en total: 10.000 € + 200 € × 240 meses = {euros(ej.totalAportado)}.</li>
+    <li>Crecimiento neto anual: 1,06 × 0,998 − 1 = {porcentaje(1.06 * 0.998 - 1, 3)}.</li>
+    <li>Valor estimado a los 20 años: <strong>{euros(ej.valorFinal)}</strong>. Ganancia: {euros(ej.ganancia)}.</li>
+    <li>Sin comisiones habrías tenido {euros(ej.valorSinComisiones)}: te han costado {euros(ej.costeComisiones)}.</li>
+    <li>Si reembolsas todo, el IRPF sería de {euros(ej.impuesto)}, un {porcentaje(tipoMedio, 1)} de la ganancia. Te quedarían <strong>{euros(ej.valorNeto)}</strong>.</li>
+  </ol>
+
+  <h2>Lo que más mueve el resultado</h2>
+  <div class="tabla-scroll">
+    <table>
+      <thead><tr><th scope="col">Escenario</th><th scope="col">Valor estimado</th><th scope="col">Coste de comisiones</th></tr></thead>
+      <tbody>
+        <tr><td>Ejemplo (6 %, 0,2 %, 20 años)</td><td>{euros(ej.valorFinal)}</td><td>{euros(ej.costeComisiones)}</td></tr>
+        <tr><td>Con comisiones del 1,5 %</td><td>{euros(caro.valorFinal)}</td><td>{euros(caro.costeComisiones)}</td></tr>
+        <tr><td>Con rentabilidad del 4 %</td><td>{euros(al4.valorFinal)}</td><td>{euros(al4.costeComisiones)}</td></tr>
+        <tr><td>Con rentabilidad del 8 %</td><td>{euros(al8.valorFinal)}</td><td>{euros(al8.costeComisiones)}</td></tr>
+        <tr><td>A 30 años en lugar de 20</td><td>{euros(a30.valorFinal)}</td><td>{euros(a30.costeComisiones)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    De las tres variables, solo controlas dos: el plazo y las comisiones. Pasar de un 0,2 % a un 1,5 % de comisiones deja
+    {euros(ej.valorFinal - caro.valorFinal)} menos en el ejemplo, sin que el mercado haya hecho nada distinto.
+  </p>
+
+  <h2>Impuestos al reembolsar</h2>
+  <p>
+    Los fondos tributan solo cuando vendes. La ganancia, que es la diferencia entre lo que recibes y lo que aportaste, va a la
+    base del ahorro del IRPF, con una escala por tramos que empieza en el {porcentaje(tramos[0].tipo, 0)}. La calculadora supone
+    que reembolsas todo de una vez y que no tienes otras rentas del ahorro ese año.
+  </p>
+  <p>
+    Si reembolsas poco a poco, cada año tributa solo la ganancia de lo vendido, y una parte mayor cae en los tramos bajos. Y
+    mientras no vendas, puedes cambiar de un fondo a otro mediante traspaso sin tributar en ese momento.
+  </p>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Tomar la proyección como una previsión.</strong> Es el resultado de una hipótesis constante, no lo que ocurrirá.</li>
+    <li><strong>Usar la rentabilidad de los últimos años.</strong> Los periodos buenos no se repiten necesariamente.</li>
+    <li><strong>Ignorar las comisiones por ser «pequeñas».</strong> Se aplican cada año sobre todo el patrimonio.</li>
+    <li><strong>Invertir dinero que necesitarás pronto.</strong> En plazos cortos, la renta variable puede estar en pérdidas justo cuando lo necesites.</li>
+    <li><strong>Olvidar la inflación.</strong> Dentro de 20 años, los euros comprarán menos que hoy.</li>
+  </ul>
+</Calculadora>

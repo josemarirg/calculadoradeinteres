@@ -1,0 +1,147 @@
+---
+import Calculadora from '../layouts/Calculadora.astro';
+import CalculadoraDeudas from '../components/calc/CalculadoraDeudas';
+import { calcularDeudas, type EntradaDeudas } from '../lib/calc/deudas';
+import { duracion } from '../components/calc/ui';
+import { euros } from '../lib/formato';
+import { SITIO } from '../config/sitio';
+
+// Cifras del texto calculadas con el mismo módulo que usa la calculadora.
+const base: EntradaDeudas = {
+  deudas: [
+    { saldo: 6_000, tin: 0.2, cuota: 150 },
+    { saldo: 2_000, tin: 0.07, cuota: 60 },
+  ],
+  extra: 100,
+  metodo: 'avalancha',
+};
+const ej = calcularDeudas(base);
+const solo = ej.soloCuotas!;
+const sinExtra = calcularDeudas({ ...base, extra: 0 });
+const extra200 = calcularDeudas({ ...base, extra: 200 });
+const difMetodos = ej.bola.intereses - ej.avalancha.intereses;
+
+const faqs = [
+  {
+    p: '¿Qué deuda conviene pagar primero?',
+    r: `La de mayor tipo de interés, si lo que quieres es pagar lo menos posible. En el ejemplo, empezar por la tarjeta al 20 % cuesta ${euros(ej.avalancha.intereses)} de intereses; empezar por el préstamo pequeño al 7 %, ${euros(ej.bola.intereses)}.`,
+  },
+  {
+    p: '¿Qué es el método avalancha?',
+    r: 'Consiste en pagar las cuotas de todas las deudas y destinar todo el dinero extra a la que tiene el tipo de interés más alto. Cuando se liquida, su cuota y el extra pasan a la siguiente más cara. Es el orden que menos intereses genera.',
+  },
+  {
+    p: '¿Qué es el método bola de nieve?',
+    r: 'Es igual, pero el extra va a la deuda más pequeña, sea cual sea su tipo. Se eliminan deudas antes, lo que a mucha gente le ayuda a mantener el plan, a cambio de pagar algo más de intereses.',
+  },
+  {
+    p: '¿Cuánto se ahorra con un extra mensual?',
+    r: `Mucho más de lo que parece. En el ejemplo, pagando solo las cuotas se tardan ${duracion(solo.meses)} y se pagan ${euros(solo.intereses)} de intereses. Con 100 € más al mes y traspasando las cuotas liberadas, ${duracion(ej.elegido.meses)} y ${euros(ej.elegido.intereses)}.`,
+  },
+  {
+    p: '¿Y si no puedo aportar ningún extra?',
+    r: `Aun así ayuda mantener el pago total: cuando termines una deuda, suma su cuota a la siguiente en lugar de gastarla. En el ejemplo, solo con eso el plazo baja de ${duracion(solo.meses)} a ${duracion(sinExtra.elegido.meses)}.`,
+  },
+  {
+    p: '¿Debo incluir la hipoteca?',
+    r: 'Normalmente no. La hipoteca suele ser la deuda más barata y más larga, y distorsiona el plan. Esta calculadora está pensada para tarjetas, préstamos personales y financiaciones de consumo. Para la hipoteca, usa la calculadora de amortización anticipada.',
+  },
+  {
+    p: '¿Tiene coste amortizar un préstamo antes de tiempo?',
+    r: 'Puede tenerlo: algunos contratos prevén una compensación por reembolso anticipado, que la ley limita. La calculadora no la incluye. Consulta tu contrato antes de amortizar y compárala con los intereses que te ahorras.',
+  },
+];
+---
+<Calculadora
+  slug="liquidar-deudas"
+  titulo="Calculadora para liquidar deudas: avalancha o bola de nieve"
+  descripcion="Introduce tus deudas y un extra mensual y calcula cuándo quedarás libre de ellas, cuántos intereses pagarás y qué método te conviene: avalancha o bola de nieve."
+  revisado="2026-11-12"
+  faqs={faqs}
+  relacionadas={['tarjeta-revolving', 'prestamo-personal', 'amortizacion-anticipada', 'tin-tae']}
+  fuentes={[
+    { clave: 'bde', nota: 'préstamos al consumo, tarjetas y reembolso anticipado.' },
+    { clave: 'boe', nota: 'Ley 16/2011, de contratos de crédito al consumo.' },
+  ]}
+  altoIframe={980}
+>
+  <CalculadoraDeudas slot="calc" client:load urlPublica={`${SITIO.url}/liquidar-deudas/`} />
+
+  <h2>Cómo funciona el plan</h2>
+  <p>
+    Cuando tienes varias deudas, el orden en que las atacas cambia lo que acabas pagando. La calculadora parte de una idea
+    sencilla: cada mes pagas la cuota de todas, para no caer en impagos, y todo el dinero adicional que puedas reunir va a
+    <strong>una sola deuda</strong>. Cuando esa deuda se liquida, su cuota no vuelve a tu bolsillo, sino que se suma a lo que
+    pagas por la siguiente. El pago mensual total se mantiene igual hasta el final.
+  </p>
+  <p>
+    Ese traspaso de cuotas es lo que acelera el plan: cada deuda liquidada hace que la siguiente caiga más rápido.
+  </p>
+
+  <h2>Avalancha o bola de nieve</h2>
+  <p>Los dos métodos solo se diferencian en cuál es la deuda que recibe el extra:</p>
+  <ul>
+    <li><strong>Avalancha: la de más interés.</strong> Es la opción que minimiza los intereses, porque elimina antes el dinero más caro.</li>
+    <li><strong>Bola de nieve: la más pequeña.</strong> Cierras deudas antes y ves progreso pronto. Suele costar algo más.</li>
+  </ul>
+  <p>
+    Si la deuda más pequeña es también la más cara, los dos métodos coinciden. Cuando no, la calculadora te enseña la diferencia
+    en euros para que decidas si el empujón de cerrar una deuda antes te compensa.
+  </p>
+
+  <h2>Cómo se calcula</h2>
+  <p>No hay una fórmula cerrada: se simula mes a mes. En cada mes:</p>
+  <p class="formula">Intereses de cada deuda = Saldo · TIN / 12</p>
+  <ol>
+    <li>Se suman a cada deuda sus intereses del mes.</li>
+    <li>Se paga la cuota de cada una, o lo que quede si es menos.</li>
+    <li>El extra, más las cuotas de las deudas ya liquidadas, va a la deuda elegida por el método. Si sobra, pasa a la siguiente.</li>
+  </ol>
+  <p>
+    La comparación «pagando solo las cuotas» supone lo contrario: cada deuda sigue con su cuota actual hasta el final y, cuando
+    termina, ese dinero deja de destinarse a deudas.
+  </p>
+
+  <h2>Ejemplo resuelto</h2>
+  <p>
+    Tienes una tarjeta con 6.000 € pendientes al 20 % TIN, por la que pagas 150 € al mes, y un préstamo con 2.000 € pendientes
+    al 7 % TIN y 60 € de cuota. Puedes añadir 100 € al mes. Son los datos con los que se abre la calculadora.
+  </p>
+  <ol>
+    <li>Deuda total: {euros(ej.deudaTotal)}. Pago mensual: 150 € + 60 € + 100 € = {euros(ej.presupuestoMensual)}.</li>
+    <li>
+      <strong>Avalancha.</strong> El extra va a la tarjeta, que se liquida en el mes {ej.avalancha.orden[0].mes}. El préstamo termina
+      en el mes {ej.avalancha.orden[1].mes}. Total: <strong>{duracion(ej.avalancha.meses)}</strong> y <strong>{euros(ej.avalancha.intereses)}</strong> de intereses.
+    </li>
+    <li>
+      <strong>Bola de nieve.</strong> El extra va al préstamo, que se liquida en el mes {ej.bola.orden[0].mes}. La tarjeta, que mientras
+      tanto sigue al 20 %, termina en el mes {ej.bola.orden[1].mes}. Total: {duracion(ej.bola.meses)} y {euros(ej.bola.intereses)} de intereses.
+    </li>
+    <li>
+      <strong>Solo las cuotas.</strong> Sin extra y sin traspasar cuotas: {duracion(solo.meses)} y {euros(solo.intereses)} de intereses.
+    </li>
+  </ol>
+  <p>
+    La avalancha ahorra {euros(difMetodos)} frente a la bola de nieve, y {euros(solo.intereses - ej.avalancha.intereses)} frente
+    a no hacer nada. Con 200 € de extra en lugar de 100 €, el plazo bajaría a {duracion(extra200.elegido.meses)} y los intereses
+    a {euros(extra200.elegido.intereses)}.
+  </p>
+
+  <h2>Antes de empezar</h2>
+  <ul>
+    <li><strong>Reúne los datos reales.</strong> Saldo pendiente, TIN y cuota de cada deuda están en el último extracto o en el contrato.</li>
+    <li><strong>No dejes de pagar ninguna cuota.</strong> Un impago genera intereses de demora y comisiones que ningún método compensa.</li>
+    <li><strong>Guarda un pequeño colchón.</strong> Si destinas todo a las deudas y surge un imprevisto, acabarás usando otra vez la tarjeta.</li>
+    <li><strong>Pregunta por el coste de amortizar.</strong> En los préstamos puede haber una compensación por reembolso anticipado.</li>
+    <li><strong>No abras deuda nueva.</strong> El cálculo supone que no añades compras ni préstamos durante el plan.</li>
+  </ul>
+
+  <h2>Errores frecuentes</h2>
+  <ul>
+    <li><strong>Repartir el extra entre todas.</strong> Concentrarlo en una sola deuda es lo que reduce los intereses.</li>
+    <li><strong>Ordenar por cuota en lugar de por tipo.</strong> La deuda con la cuota más alta no es necesariamente la más cara.</li>
+    <li><strong>Gastar la cuota liberada.</strong> Si al cerrar una deuda bajas el pago total, el plan se alarga.</li>
+    <li><strong>Confundir TIN y TAE.</strong> Para este cálculo hace falta el TIN de cada deuda; la TAE sirve para comparar ofertas.</li>
+    <li><strong>Reunificar sin hacer números.</strong> Agrupar deudas en un préstamo más largo baja la cuota, pero puede subir el coste total.</li>
+  </ul>
+</Calculadora>
